@@ -1447,7 +1447,7 @@ body.guest #noteNew{display:none}
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-be3ff9cdfbc2.json</div>'
+      + '<div class="boot-detail">網址：data-024271b62300.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -1457,11 +1457,15 @@ body.guest #noteNew{display:none}
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
     s.src = 'app-b89749cd3876.js';
-    s.onload = function () { box.remove(); };
+    s.onload = function () {
+      box.remove();
+      // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
+      if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
+    };
     s.onerror = function () { fail('程式載入失敗', 'app-b89749cd3876.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-be3ff9cdfbc2.json').then(function (r) {
+  fetch('data-024271b62300.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
