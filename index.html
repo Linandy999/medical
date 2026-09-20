@@ -1483,6 +1483,14 @@ body.guest #noteNew{display:none}
   }).then(function (text) {
     bar.style.width = '100%';
     msg.textContent = '整理中…';
+    // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
+    // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
+    if (window.caches) {
+      caches.open('medkb-024271b62300').then(function (c) {
+        c.put('data-024271b62300.json', new Response(text, {
+          headers: { 'Content-Type': 'application/json' } }));
+      }).catch(function () {});
+    }
     setTimeout(function () { start(JSON.parse(text)); }, 0);
   }).catch(function (err) {
     fail('資料載入失敗', String((err && err.message) || err));
