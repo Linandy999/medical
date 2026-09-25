@@ -442,6 +442,9 @@ function md(src) {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // [詳見：某條目](#entry-條目id-主題id)：站內跳轉，點了捲到那一則（可跨主題）
+    .replace(/\[([^\]]+)\]\(#entry-(\d+)-(\d+)\)/g,
+             '<a href="#" class="entry-link" data-jump="$2" data-jumptopic="$3">$1</a>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
   const closeList = () => { while (list > 0) { out.push('</ul>'); list--; } };
   const closeTbl = () => { if (tbl) { out.push('</tbody></table>'); tbl = null; } };
@@ -521,6 +524,7 @@ function showView(v) {
   if (v === 'exams') initExams();
   if (v === 'figs') loadFigures();
   if (v === 'imgs') loadImages();
+  if (v === 'pubmed') setTimeout(() => $('#pmQ').focus(), 30);
   if (v === 'notes') state.activeCat = '__notes';
   else if (state.activeCat === '__notes') state.activeCat = null;
   renderCatNav(state.overview.length ? state.overview : null);
@@ -951,6 +955,7 @@ function renderEntry(e, srcLabel) {
     <div class="act">
       <button data-src-btn="${e.id}">查看原文出處</button>
       <button data-note-btn="${e.id}">為此段落加筆記</button>
+      ${state.isAdmin ? `<button data-askai-entry="${e.id}">問 AI</button>` : ''}
       ${state.isAdmin ? `<button data-edit-btn="${e.id}">編輯文字</button>` : ''}
       ${state.isAdmin ? `<button data-addfig="${e.id}">加入圖片</button>` : ''}
       ${state.isAdmin && e.edited_at ? `<button data-revert-btn="${e.id}" class="link-btn">還原成匯入時的內容</button>` : ''}
@@ -1966,16 +1971,28 @@ async function jumpToEntry(entryId, topicId) {
   if (!topicId) { toast('找不到來源條目', true); return; }
   try {
     showView('kb');
-    await selectTopic(topicId);
+    // 同一個主題且卡片已在畫面上就不重載，免得捲動位置和收合狀態被洗掉
+    const here = state.topicId === topicId && $(`.card[data-entry="${entryId}"]`);
+    if (!here) await selectTopic(topicId);
     setTimeout(() => {
       const card = $(`.card[data-entry="${entryId}"]`);
-      if (!card) return;
+      if (!card) { toast('這一則目前不在畫面上', true); return; }
+      const sec = card.closest('.cat');
+      if (sec && sec.classList.contains('folded')) sec.classList.remove('folded');   // 只在畫面上展開，不改記憶的收合設定
       card.scrollIntoView({ block: 'center', behavior: 'smooth' });
       card.classList.add('flash');
       setTimeout(() => card.classList.remove('flash'), 1600);
-    }, 500);
+    }, here ? 30 : 500);
   } catch (err) { toast(err.message, true); }
 }
+
+// 條目內文的「詳見」連結（md() 產生的 a.entry-link）
+document.addEventListener('click', ev => {
+  const a = ev.target.closest('a.entry-link');
+  if (!a) return;
+  ev.preventDefault();
+  jumpToEntry(+a.dataset.jump, +a.dataset.jumptopic);
+});
 
 $('#figQ').oninput = debounce(() => { figState.q = $('#figQ').value.trim(); loadFigures(); }, 300);
 $('#figTopic').onchange = () => { figState.topic = $('#figTopic').value; loadFigures(); };
@@ -2599,6 +2616,7 @@ function showToolbar(rect, existing) {
     + `<button class="hl-bold ${anyBold ? 'on' : ''}" data-hlbold title="粗體">B</button>`
     + '<span class="sep"></span>'
     + `<button class="txt" data-hlnote>加筆記</button>`
+    + (state.isAdmin ? `<button class="txt" data-askai>問 AI</button>` : '')
     + (ids.length ? `<button class="txt hl-del" data-hldel title="清除這段畫記">✕ 清除畫記${ids.length > 1 ? `（${ids.length}）` : ''}</button>` : '')
     + (canBoxSel() || canDropBq()
         ? '<span class="sep"></span><span class="hl-lab">重點框</span>'
@@ -2616,6 +2634,12 @@ function showToolbar(rect, existing) {
   $$('#hlToolbar [data-textcolor]').forEach(b => b.onclick = () => applyMark(b.dataset.textcolor, 'text'));
   const bb = $('#hlToolbar [data-hlbold]'); if (bb) bb.onclick = () => toggleBold(!anyBold);
   const nb = $('#hlToolbar [data-hlnote]'); if (nb) nb.onclick = attachNote;
+  const ab = $('#hlToolbar [data-askai]');
+  if (ab) ab.onclick = () => {
+    const sel = state.hlSel || {};
+    aiAttach(sel.target_type === 'entry' ? sel.target_id : null, sel.text || '');
+    hideToolbar(); window.getSelection().removeAllRanges();
+  };
   const db = $('#hlToolbar [data-hldel]'); if (db) db.onclick = removeMark;
   const qb = $('#hlToolbar [data-bqdel]'); if (qb) qb.onclick = dropBlockquote;
   $$('#hlToolbar [data-bqbox]').forEach(b => b.onclick = () => boxBlockquote(b.dataset.bqbox));
@@ -3366,6 +3390,9 @@ function applyAccessUI() {
   const guest = !state.isAdmin;
   document.body.classList.toggle('guest', guest);
   $('#loginBtn').hidden = !guest;
+  $('#aiBtn').hidden = guest;
+  $('#pmTabBtn').hidden = guest;
+  if (guest && typeof aiClose === 'function') aiClose();
   const tagBtn = $('#exTagStart'); if (tagBtn) tagBtn.hidden = guest;
   if (guest) { const tb = $('#tagBox'); if (tb) tb.hidden = true; }
   if (guest && !$('#view-kb').classList.contains('active')
@@ -3708,6 +3735,346 @@ document.addEventListener('keydown', ev => {
     $('#loginModal').classList.remove('open');
     $('#imgModal').classList.remove('open'); lbClose();
   }
+});
+
+/* ================= 右側「問 AI」抽屜 =================
+   後端 /api/assistant/* 用本機 claude -p 走訂閱額度；只有管理員看得到。
+   上下文：目前主題＋（選填）某一則條目＋（選填）反白的文字，送出後才附上。 */
+const AI = { thread: null, entryId: null, entryTitle: '', selection: '', busy: false, loaded: false };
+
+function aiOpen() {
+  if (!state.isAdmin) return;
+  $('#aiPanel').hidden = false;
+  document.body.classList.add('ai-open');
+  $('#aiBtn').classList.add('active');
+  aiSetWidth(aiSavedWidth());
+  if (!AI.loaded) aiInit();
+  aiRenderCtx();
+  setTimeout(() => $('#aiQ').focus(), 30);
+}
+/* 抽屜寬度：預設約半個螢幕，可拖左緣調整、⤢ 一鍵放大，寬度記在 localStorage */
+function aiDefaultWidth() { return Math.round(Math.max(560, Math.min(820, window.innerWidth * 0.5))); }
+function aiSavedWidth() {
+  try { const w = +localStorage.getItem('aiWidth'); if (w) return w; } catch (e) { }
+  return aiDefaultWidth();
+}
+function aiSetWidth(w, save) {
+  w = Math.round(Math.max(380, Math.min(w, window.innerWidth - 40)));
+  document.documentElement.style.setProperty('--ai-w', w + 'px');
+  // 剩下的內文寬度至少 720px 才往左推，不然內文會被擠得很窄，乾脆蓋在上面
+  document.body.classList.toggle('ai-push', window.innerWidth - w >= 720);
+  if (save) { try { localStorage.setItem('aiWidth', String(w)); } catch (e) { } }
+  AI.width = w;
+}
+function aiClose() {
+  $('#aiPanel').hidden = true;
+  document.body.classList.remove('ai-open');
+  $('#aiBtn').classList.remove('active');
+}
+async function aiInit() {
+  AI.loaded = true;
+  if (!$('#aiLog').children.length) aiEmpty();
+  try {
+    const st = await api('/assistant/status');
+    if (st.model) $('#aiModel').value = st.model;
+    $('#aiWeb').checked = st.allow_web !== false;
+    if (!st.ok) aiAppend('err', `⚠ ${st.error}${st.hint ? '。' + st.hint : ''}`);
+  } catch (e) { aiAppend('err', '⚠ ' + e.message); }
+}
+function aiEmpty() {
+  $('#aiLog').innerHTML = '';
+}
+function aiRenderCtx() {
+  const chips = [];
+  const t = state.topics.find(x => x.id === state.topicId);
+  if (t && !AI.thread) chips.push(`<span class="ai-chip"><span>主題：${esc(t.name)}</span></span>`);
+  if (AI.entryId) chips.push(`<span class="ai-chip"><span>條目：${esc(AI.entryTitle || '#' + AI.entryId)}</span><button data-aictx="entry" title="不附這則">✕</button></span>`);
+  const selLabel = AI.selection.startsWith('PubMed 文獻：')
+    ? '📄 ' + AI.selection.split('\n')[0].replace('PubMed 文獻：', '') : `反白：「${AI.selection}」`;
+  if (AI.selection) chips.push(`<span class="ai-chip"><span>${esc(selLabel)}</span><button data-aictx="sel" title="不附這段">✕</button></span>`);
+  $('#aiCtx').innerHTML = chips.join('');
+  $$('#aiCtx [data-aictx]').forEach(b => b.onclick = () => {
+    if (b.dataset.aictx === 'entry') { AI.entryId = null; AI.entryTitle = ''; }
+    else AI.selection = '';
+    aiRenderCtx();
+  });
+}
+function aiAttach(entryId, selection, maxLen) {
+  AI.entryId = entryId || null;
+  const card = entryId ? $(`.card[data-entry="${entryId}"]`) : null;
+  const src = card ? card.querySelector('.src span') : null;
+  AI.entryTitle = src ? src.textContent.replace(/^📄[^·]*·\s*/, '').trim() : '';
+  AI.selection = (selection || '').trim().slice(0, maxLen || 1200);
+  aiOpen();
+}
+function aiAppend(kind, html) {
+  const log = $('#aiLog');
+  const empty = log.querySelector('.ai-empty'); if (empty) empty.remove();
+  const el = document.createElement('div');
+  el.className = 'ai-msg ' + kind + (kind === 'bot' ? ' md' : '');   // .md：表格等樣式跟條目一致
+  if (kind === 'user') el.textContent = html; else el.innerHTML = html;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  return el;
+}
+function aiBotTools(el, text, entryId) {
+  const bar = document.createElement('div');
+  bar.className = 'ai-tools';
+  bar.innerHTML = `<button data-a="copy">複製</button><button data-a="note">存成筆記</button>`;
+  bar.querySelector('[data-a=copy]').onclick = async () => {
+    try { await navigator.clipboard.writeText(text); toast('已複製'); } catch (e) { toast('複製失敗', true); }
+  };
+  bar.querySelector('[data-a=note]').onclick = async () => {
+    const q = (el.dataset.q || '').slice(0, 40);
+    try {
+      await api('/notes', { method: 'POST', body: {
+        title: '✦ AI：' + q, body_md: text, is_correction: false,
+        entry_id: entryId || null, figure_id: null, topic_id: state.topicId,
+        category: realCat(state.activeCat) || null } });
+      toast('已存進筆記區');
+      if (typeof loadNotes === 'function') loadNotes();
+    } catch (e) { toast(e.message, true); }
+  };
+  el.appendChild(bar);
+}
+async function aiSend() {
+  const q = $('#aiQ').value.trim();
+  if (!q || AI.busy) return;
+  AI.busy = true; $('#aiSend').disabled = true;
+  $('#aiQ').value = '';
+  aiAppend('user', q);
+  const bot = aiAppend('bot', '<span class="ai-status">思考中…</span>');
+  bot.dataset.q = q;
+  const entryId = AI.entryId;
+  const body = { question: q, thread_id: AI.thread, entry_id: entryId, topic_id: state.topicId,
+                 selection: AI.selection, use_kb: true, allow_web: $('#aiWeb').checked };
+  AI.selection = '';                         // 反白只附一次；條目留著，追問時後端會自己判斷要不要重附
+  let text = '', raf = 0;
+  const paint = () => { raf = 0; bot.innerHTML = md(text) || '<span class="ai-status">思考中…</span>';
+                        const log = $('#aiLog'); log.scrollTop = log.scrollHeight; };
+  try {
+    const res = await fetch('/api/assistant/ask', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? '需要管理員登入' : res.statusText);
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (!line.startsWith('data: ')) continue;
+        const ev = JSON.parse(line.slice(6));
+        if (ev.type === 'thread') AI.thread = ev.thread_id;
+        else if (ev.type === 'delta') { text += ev.text; if (!raf) raf = requestAnimationFrame(paint); }
+        else if (ev.type === 'status') { if (!text) bot.innerHTML = `<span class="ai-status">${esc(ev.message)}</span>`; }
+        else if (ev.type === 'error') { bot.className = 'ai-msg err'; bot.textContent = '⚠ ' + ev.message; }
+        else if (ev.type === 'done') { text = ev.text || text; paint(); aiBotTools(bot, text, entryId); }
+      }
+    }
+  } catch (e) { bot.className = 'ai-msg err'; bot.textContent = '⚠ ' + e.message; }
+  AI.busy = false; $('#aiSend').disabled = false;
+  aiRenderCtx();
+  $('#aiQ').focus();
+}
+async function aiShowHistory() {
+  const box = $('#aiHist');
+  if (!box.hidden) { box.hidden = true; return; }
+  try {
+    const { threads } = await api('/assistant/threads');
+    box.innerHTML = threads.length ? threads.map(t =>
+      `<a href="#" data-aith="${t.id}">${esc(t.title.replace(/^✦ /, ''))}<div class="t">${fmtTime(t.updated_at)}</div></a>`).join('')
+      : '<div class="ai-empty" style="padding:8px 14px">還沒有紀錄</div>';
+    box.hidden = false;
+    $$('#aiHist [data-aith]').forEach(a => a.onclick = ev => { ev.preventDefault(); aiLoadThread(+a.dataset.aith); });
+  } catch (e) { toast(e.message, true); }
+}
+async function aiLoadThread(id) {
+  const { messages } = await api(`/qa/threads/${id}`);
+  $('#aiHist').hidden = true;
+  $('#aiLog').innerHTML = '';
+  AI.thread = id; AI.entryId = null; AI.selection = '';
+  let lastQ = '';
+  (messages || []).forEach(m => {
+    if (m.role === 'user') { aiAppend('user', m.content_md); lastQ = m.content_md; }
+    else if (m.source_type === 'error') aiAppend('err', '⚠ ' + esc(m.content_md));
+    else { const el = aiAppend('bot', md(m.content_md)); el.dataset.q = lastQ;
+           const meta = m.meta || {}; aiBotTools(el, m.content_md, meta.entry_id); }
+  });
+  aiRenderCtx();
+}
+$('#aiBtn').onclick = () => $('#aiPanel').hidden ? aiOpen() : aiClose();
+$('#aiClose').onclick = aiClose;
+$('#aiMax').onclick = () => {
+  const big = Math.round(window.innerWidth * 0.92);
+  if ((AI.width || 0) >= big - 10) aiSetWidth(AI.prevWidth || aiDefaultWidth(), true);
+  else { AI.prevWidth = AI.width; aiSetWidth(big, true); }
+};
+$('#aiGrip').onmousedown = ev => {
+  ev.preventDefault();
+  const grip = $('#aiGrip'); grip.classList.add('drag'); document.body.classList.add('ai-resizing');
+  const move = e => aiSetWidth(window.innerWidth - e.clientX);
+  const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+                     grip.classList.remove('drag'); document.body.classList.remove('ai-resizing'); aiSetWidth(AI.width, true); };
+  document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+};
+$('#aiGrip').ondblclick = () => aiSetWidth(aiDefaultWidth(), true);
+window.addEventListener('resize', debounce(() => { if (!$('#aiPanel').hidden) aiSetWidth(AI.width || aiSavedWidth()); }, 150));
+$('#aiSend').onclick = aiSend;
+$('#aiQ').onkeydown = ev => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); aiSend(); } };
+$('#aiNew').onclick = () => { AI.thread = null; AI.selection = ''; $('#aiHist').hidden = true; aiEmpty(); aiRenderCtx(); $('#aiQ').focus(); };
+$('#aiHistBtn').onclick = aiShowHistory;
+$('#aiModel').onchange = () => api('/assistant/settings', { method: 'POST', body: { model: $('#aiModel').value } })
+  .then(() => toast('之後的問題改用 ' + $('#aiModel').value)).catch(e => toast(e.message, true));
+$('#aiWeb').onchange = () => api('/assistant/settings', { method: 'POST', body: { allow_web: $('#aiWeb').checked } }).catch(() => {});
+document.addEventListener('click', ev => {
+  const b = ev.target instanceof Element ? ev.target.closest('[data-askai-entry]') : null;
+  if (b) { ev.preventDefault(); aiAttach(+b.dataset.askaiEntry, ''); }
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('#aiPanel').hidden) aiClose(); });
+
+
+/* ================= PubMed 分頁：直接查 NCBI，不經 AI、不耗額度 =================
+   只有「問 AI 這篇」會打開右側 AI 抽屜。 */
+const PM = { q: '', page: 1, count: 0, items: {} };
+function pmItemHtml(it) {
+  const types = (it.types || []).map(t =>
+    `<span class="pm-type ${/Retracted/.test(t) ? 'warn' : ''}">${esc(t)}</span>`).join('');
+  return `<div class="pm-item" data-pmid="${it.pmid}">
+    <a class="pm-title" href="${it.url}" target="_blank" rel="noreferrer">${esc(it.title)}</a>
+    <div class="pm-meta">${types}${esc(it.journal)} · ${esc(it.date || it.year)}${it.authors ? ' · ' + esc(it.authors) : ''} · PMID ${it.pmid}</div>
+    <div class="pm-acts">
+      <button data-pmabs>摘要</button>
+      <button data-pmask>問 AI 這篇</button>
+      <button data-pmnote>存成筆記</button>
+      ${it.pmc ? `<button class="primary" data-pmread>在這裡讀全文</button>` : ''}
+      ${it.library_url ? `<a href="${esc(it.library_url)}" target="_blank" rel="noreferrer" title="經圖書館代理開啟，可看學校訂閱的全文">${esc(PM.lib || '院內')}全文 ↗</a>` : ''}
+      <a href="${it.url}" target="_blank" rel="noreferrer">PubMed ↗</a>
+    </div>
+    <div class="pm-abs md" hidden></div>
+  </div>`;
+}
+async function pmSearch(more) {
+  const q = $('#pmQ').value.trim();
+  if (!q) return;
+  if (/[一-鿿]/.test(q)) toast('PubMed 只認英文，中文關鍵字大多查不到；可以按「用目前主題」', true);
+  if (!more) { PM.q = q; PM.page = 1; PM.items = {}; $('#pmList').innerHTML = '<div class="ai-status">搜尋中…</div>'; }
+  else PM.page += 1;
+  const types = $$('.pmType').filter(x => x.checked).map(x => x.value).join(',');
+  const qs = new URLSearchParams({ q: PM.q, page: PM.page, sort: $('#pmSort').value, types,
+                                   free: $('#pmFree').checked ? 'true' : 'false' });
+  if ($('#pmYears').value) qs.set('years', $('#pmYears').value);
+  try {
+    const r = await api('/pubmed/search?' + qs.toString());
+    r.items.forEach(it => { PM.items[it.pmid] = it; });
+    PM.lib = r.library_name || '';
+    PM.count = r.count;
+    const list = $('#pmList');
+    const old = list.querySelector('.pm-more'); if (old) old.remove();
+    if (!more) list.innerHTML = `<div class="pm-count">共 ${r.count.toLocaleString()} 篇</div>`
+      + (r.items.length ? '' : '<div class="ai-empty">查無結果，換個英文關鍵字或放寬篩選。</div>');
+    list.insertAdjacentHTML('beforeend', r.items.map(pmItemHtml).join(''));
+    if (PM.page * 20 < r.count) list.insertAdjacentHTML('beforeend', '<button class="pm-more">載入更多</button>');
+    const mb = list.querySelector('.pm-more'); if (mb) mb.onclick = () => pmSearch(true);
+  } catch (e) { $('#pmList').innerHTML = `<div class="ai-msg err">⚠ ${esc(e.message)}</div>`; }
+}
+async function pmAbstract(pmid) {
+  const it = PM.items[pmid] || {};
+  if (it.abs === undefined) {
+    const r = await api('/pubmed/abstract/' + pmid);
+    it.abs = r.abstract || ''; it.mesh = r.mesh || [];
+  }
+  return it;
+}
+$('#pmGo').onclick = () => pmSearch(false);
+$('#pmQ').onkeydown = ev => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); pmSearch(false); } };
+['#pmSort', '#pmYears', '#pmFree'].forEach(s => $(s).onchange = () => { if (PM.q) pmSearch(false); });
+$$('.pmType').forEach(x => x.onchange = () => { if (PM.q) pmSearch(false); });
+$('#pmTopic').onclick = () => {
+  const t = state.topics.find(x => x.id === state.topicId);
+  if (!t) { toast('先在左邊選一個疾病主題', true); return; }
+  if (!t.name_en) { toast(`「${t.name}」沒有設定英文名稱`, true); return; }
+  $('#pmQ').value = t.name_en; pmSearch(false);
+};
+$('#pmList').addEventListener('click', async ev => {
+  const b = ev.target instanceof Element ? ev.target.closest('button[data-pmabs],button[data-pmask],button[data-pmnote],button[data-pmread]') : null;
+  if (!b) return;
+  const box = b.closest('.pm-item'); const pmid = box.dataset.pmid;
+  if (b.hasAttribute('data-pmread')) { pmRead(pmid); return; }
+  try {
+    const it = await pmAbstract(pmid);
+    const cite = `${it.journal} ${it.year}${it.authors ? '；' + it.authors : ''}；PMID ${pmid}`;
+    if (b.hasAttribute('data-pmabs')) {
+      const el = box.querySelector('.pm-abs');
+      if (el.hidden) el.innerHTML = it.abs ? md(it.abs) : '<span class="muted">這篇沒有摘要</span>';
+      el.hidden = !el.hidden;
+    } else if (b.hasAttribute('data-pmask')) {
+      await pmAskAbout(pmid);
+    } else {
+      await api('/notes', { method: 'POST', body: {
+        title: 'PubMed：' + it.title.slice(0, 60), is_correction: false,
+        body_md: `[${it.title}](${it.url})\n\n${cite}\n\n${it.abs || '（無摘要）'}`,
+        entry_id: null, figure_id: null, topic_id: state.topicId, category: null } });
+      toast('已存進筆記區');
+      if (typeof loadNotes === 'function') loadNotes();
+    }
+  } catch (e) { toast(e.message, true); }
+});
+
+
+/* PMC 免費全文直接在頁面裡讀：後端把 JATS 轉成 HTML（白名單標籤），圖片直接連 NCBI 的 CDN */
+function pmShowReader(on) {
+  $('#pmReader').hidden = !on;
+  ['.pm-bar', '.pm-filters', '#pmList'].forEach(s => { $('#view-pubmed ' + s).hidden = on; });
+}
+async function pmAskAbout(pmid) {
+  const it = await pmAbstract(pmid);
+  const cite = `${it.journal} ${it.year}${it.authors ? '；' + it.authors : ''}；PMID ${pmid}`;
+  if (!it.abs) toast('這篇沒有摘要，AI 只看得到標題', true);
+  aiAttach(null, `PubMed 文獻：${it.title}（${cite}）\n\n${it.abs || ''}`, 4000);
+}
+async function pmRead(pmid) {
+  const it = PM.items[pmid]; if (!it || !it.pmc) return;
+  PM.listScroll = window.scrollY;
+  const rd = $('#pmReader');
+  const links = `${it.library_url ? `<a href="${esc(it.library_url)}" target="_blank" rel="noreferrer">${esc(PM.lib || '院內')}全文 ↗</a>` : ''}
+    <a href="https://pmc.ncbi.nlm.nih.gov/articles/${it.pmc}/" target="_blank" rel="noreferrer">PMC 原頁 ↗</a>`;
+  rd.innerHTML = `<div class="pmr-top"><button data-pmrback>← 回到搜尋結果</button><span class="spacer"></span>
+      <button data-pmrask>問 AI 這篇</button>${links}</div>
+    <h2 class="pmr-title">${esc(it.title)}</h2>
+    <div class="pm-meta">${esc(it.journal)} · ${esc(it.date || it.year)}${it.authors ? ' · ' + esc(it.authors) : ''} · PMID ${pmid} · ${it.pmc}</div>
+    <div class="ai-status" style="margin-top:16px">載入全文中…（第一次開約需幾秒，之後會記住）</div>`;
+  pmShowReader(true); window.scrollTo(0, 0);
+  rd.querySelector('[data-pmrback]').onclick = () => { pmShowReader(false); window.scrollTo(0, PM.listScroll || 0); };
+  rd.querySelector('[data-pmrask]').onclick = () => pmAskAbout(pmid).catch(e => toast(e.message, true));
+  let f;
+  try { f = await api('/pubmed/pmc/' + it.pmc); }
+  catch (e) { rd.querySelector('.ai-status').outerHTML = `<div class="ai-msg err">⚠ ${esc(e.message)}</div>`; return; }
+  if (!f.ok) {
+    rd.querySelector('.ai-status').outerHTML = `<div class="pmr-na">${esc(f.reason || '無法取得全文')}<div class="pm-acts" style="margin-top:8px">${links}</div></div>`;
+    return;
+  }
+  const toc = (f.toc || []).length ? `<details class="pmr-toc" open><summary>目錄</summary><ol>${
+    f.toc.map(t => `<li><a href="#" data-pmrgo="${t.id}">${esc(t.title)}</a></li>`).join('')}</ol></details>` : '';
+  const nrefs = (f.refs_html.match(/<li>/g) || []).length;
+  rd.querySelector('.ai-status').outerHTML = `
+    ${f.license ? `<div class="pmr-lic">${esc(f.license)}</div>` : ''}
+    ${toc}
+    ${f.abstract_html ? `<h3>Abstract</h3><div class="pmr-abs">${f.abstract_html}</div>` : ''}
+    <div class="pmr-body">${f.body_html}</div>
+    ${nrefs ? `<details class="pmr-refs"><summary>參考文獻（${nrefs}）</summary><ol>${f.refs_html}</ol></details>` : ''}
+    <div class="pmr-top" style="margin-top:18px"><button data-pmrback2>← 回到搜尋結果</button></div>`;
+  rd.querySelector('[data-pmrback2]').onclick = () => { pmShowReader(false); window.scrollTo(0, PM.listScroll || 0); };
+}
+$('#pmReader').addEventListener('click', ev => {
+  const t = ev.target instanceof Element ? ev.target : null; if (!t) return;
+  const go = t.closest('[data-pmrgo]');
+  if (go) { ev.preventDefault(); const h = document.getElementById(go.dataset.pmrgo);
+            if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const ref = t.closest('[data-pmref]');
+  if (ref) { ev.preventDefault(); pmShowReader(false); $('#pmQ').value = ref.dataset.pmref + '[pmid]'; pmSearch(false); return; }
+  if (t.matches('.pmc-fig img')) t.classList.toggle('big');
 });
 
 /* ================= init ================= */

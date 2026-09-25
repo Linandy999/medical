@@ -13,7 +13,7 @@
   --warn:#9a6a10; --warn-soft:#fbf0da; --danger:#b4402f; --danger-soft:#f9e8e3;
   --ok:#3f7a3a; --ok-soft:#e8f2e3;
   --radius:8px; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
-  --meta:#0f766e;
+  --meta:#0f766e; --link:#1d5fd1;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -22,7 +22,7 @@
     --accent:#5fbfae; --accent-soft:#183430;
     --warn:#d9a64f; --warn-soft:#332a17; --danger:#e58272; --danger-soft:#3a201d;
     --ok:#72c078; --ok-soft:#1b301c;
-    --meta:#5eead4;
+    --meta:#5eead4; --link:#7fb0ff;
   }
 }
 *{box-sizing:border-box}
@@ -969,6 +969,130 @@ section.cat.is-empty .cat-no{color:var(--faint)}
 .ov-exams{margin-top:30px;padding-top:22px;border-top:1px solid var(--border)}
 .ov-exams .overview-title{font-size:21px}
 
+/* 條目內的「詳見：…」站內跳轉連結：藍字，和墨綠主色區分 */
+.entry-link{color:var(--link);text-decoration:underline;text-underline-offset:3px}
+.entry-link:hover{text-decoration-thickness:2px}
+
+/* ---------- 右側「問 AI」抽屜（claude -p，只有管理員看得到） ---------- */
+.ai-btn{white-space:nowrap}
+.ai-btn.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.ai-panel{position:fixed;z-index:55;top:0;right:0;bottom:0;width:min(var(--ai-w,680px),100vw);
+  background:var(--panel);border-left:1px solid var(--border);box-shadow:-6px 0 24px rgba(0,0,0,.12);
+  display:flex;flex-direction:column}
+.ai-panel[hidden]{display:none}
+.ai-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);
+  font-size:14px}
+.ai-head b{color:var(--accent);white-space:nowrap}
+.ai-head select{width:auto;padding:2px 6px;font-size:12.5px}
+.ai-head button{font-size:12.5px;padding:2px 9px}
+.ai-web{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.ai-web input{width:auto;margin:0}
+.ai-x{border-color:transparent}
+.ai-hist{max-height:40%;overflow-y:auto;border-bottom:1px solid var(--border);background:var(--panel-2);
+  font-size:13px}
+.ai-hist[hidden]{display:none}
+.ai-hist a{display:block;padding:6px 14px;color:var(--text);border-bottom:1px solid var(--border)}
+.ai-hist a:hover{background:var(--accent-soft)}
+.ai-hist .t{font-size:11px;color:var(--faint)}
+.ai-ctx{display:flex;flex-wrap:wrap;gap:6px;padding:7px 12px 0;font-size:12px}
+.ai-ctx:empty{display:none}
+.ai-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;background:var(--accent-soft);
+  color:var(--accent);border-radius:12px;padding:1px 4px 1px 9px}
+.ai-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(var(--ai-w,680px) - 90px)}
+.ai-chip button{border:0;background:transparent;color:inherit;padding:0 5px;font-size:11px}
+.ai-log{flex:1;overflow-y:auto;padding:14px 22px;font-size:15.5px;line-height:1.85}
+.ai-msg{margin:0 0 14px}
+.ai-msg.user{background:var(--panel-2);border-radius:10px;padding:6px 11px;white-space:pre-wrap}
+.ai-msg.bot table{font-size:12.5px;margin:8px 0}
+.ai-msg.bot th,.ai-msg.bot td{padding:5px 8px;line-height:1.6}
+.ai-msg.err{color:var(--danger);font-size:13px}
+.ai-status{font-size:12px;color:var(--muted)}
+.ai-tools{display:flex;gap:6px;margin-top:4px}
+.ai-tools button{font-size:11.5px;padding:1px 8px;color:var(--muted)}
+.ai-empty{color:var(--muted);font-size:13px}
+.ai-input{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--border)}
+.ai-input textarea{resize:vertical;font-size:15px;line-height:1.6;min-height:74px;max-height:40vh}
+.ai-input button{white-space:nowrap;flex:0 0 auto}
+/* 螢幕夠寬時把內文往左讓出空間；窄螢幕直接蓋在上面，不擠壓內文 */
+/* 內文讓出空間只在剩下的寬度還夠讀時才做（JS 判斷後加 ai-push），否則抽屜直接蓋在上面 */
+body.ai-open.ai-push main{margin-right:var(--ai-w,680px)}
+/* 左緣拖曳改寬度 */
+.ai-grip{position:absolute;left:-4px;top:0;bottom:0;width:9px;cursor:ew-resize;z-index:2}
+.ai-grip:hover,.ai-grip.drag{background:linear-gradient(90deg,transparent 3px,var(--accent) 3px,var(--accent) 5px,transparent 5px)}
+body.ai-resizing{user-select:none;cursor:ew-resize}
+.ai-pane{flex:1;min-height:0;display:flex;flex-direction:column}
+.ai-pane[hidden]{display:none}
+.pm-bar{display:flex;gap:8px;padding:10px 12px 4px}
+.pm-bar input{font-size:14px}
+.pm-bar button{white-space:nowrap;flex:0 0 auto}
+.pm-filters{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:4px 12px 8px;
+  font-size:12px;color:var(--muted);border-bottom:1px solid var(--border)}
+.pm-filters label{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.pm-filters input{width:auto;margin:0}
+.pm-filters select{width:auto;padding:1px 5px;font-size:12px}
+.pm-filters button{font-size:12px;padding:1px 8px}
+.pm-list{flex:1;overflow-y:auto;padding:6px 14px 20px}
+.pm-count{font-size:12px;color:var(--faint);margin:4px 0 8px}
+.pm-item{padding:9px 0;border-bottom:1px solid var(--border)}
+.pm-title{font-weight:600;font-size:14px;line-height:1.5;color:var(--text)}
+.pm-title:hover{color:var(--link)}
+.pm-meta{font-size:12px;color:var(--muted);line-height:1.6;margin-top:2px}
+.pm-type{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:9px;
+  padding:0 7px;margin-right:4px;font-size:11px}
+.pm-type.warn{background:var(--danger-soft);color:var(--danger)}
+.pm-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:5px}
+.pm-acts button{font-size:11.5px;padding:1px 8px}
+.pm-acts a{font-size:12px;color:var(--link)}
+.pm-abs{font-size:13px;line-height:1.75;margin-top:6px;background:var(--panel-2);border-radius:6px;padding:6px 10px}
+.pm-abs[hidden]{display:none}
+.pm-more{display:block;margin:12px auto 0}
+.ai-web[hidden]{display:none}
+
+/* PubMed 獨立分頁：沿用 pm-* 樣式，改成整頁寬、跟著頁面捲動 */
+#view-pubmed .pm-bar{padding:0 0 6px;max-width:980px}
+#view-pubmed .pm-filters{padding:4px 0 10px;max-width:980px;font-size:13px}
+#view-pubmed .pm-list{overflow:visible;padding:4px 0 30px;max-width:980px}
+#view-pubmed .pm-title{font-size:15.5px}
+#view-pubmed .pm-meta{font-size:13px}
+#view-pubmed .pm-abs{font-size:14.5px;padding:10px 16px}
+/* PMC 頁內全文閱讀 */
+.pm-reader{max-width:900px;padding-bottom:40px}
+.pm-reader[hidden]{display:none}
+.pmr-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.pmr-top a{color:var(--link)}
+.pmr-title{font-size:22px;line-height:1.45;margin:14px 0 6px}
+.pmr-lic{font-size:11.5px;color:var(--faint);margin:10px 0}
+.pmr-na{margin-top:16px;padding:12px 14px;background:var(--warn-soft);color:var(--warn);border-radius:8px}
+.pmr-toc{background:var(--panel-2);border-radius:8px;padding:6px 14px;margin:12px 0;font-size:14px}
+.pmr-toc summary{cursor:pointer;font-weight:600}
+.pmr-toc ol{margin:6px 0;padding-left:22px}
+.pmr-toc a{color:var(--link)}
+.pmr-abs,.pmr-body{font-size:15.5px;line-height:1.85}
+.pmr-abs{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:4px 16px}
+.pmr-body h3{font-size:19px;margin:28px 0 8px;scroll-margin-top:70px}
+.pmr-body h4{font-size:16.5px;margin:20px 0 6px}
+.pmr-body h5{font-size:15.5px;margin:16px 0 4px}
+.pmc-cite{color:var(--faint);font-size:.72em}
+.pmc-fig,.pmc-tbl{margin:18px 0;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px}
+.pmc-fig img{display:block;max-width:100%;max-height:520px;margin:6px auto;cursor:zoom-in;background:#fff}
+.pmc-fig img.big{max-height:none;cursor:zoom-out}
+.pmc-fig figcaption,.pmc-tbl figcaption{font-size:13.5px;line-height:1.7;color:var(--muted)}
+.pmc-fig figcaption p,.pmc-tbl figcaption p{margin:4px 0}
+.pmc-tscroll{overflow-x:auto;margin-top:6px}
+.pmc-tbl table{border-collapse:collapse;font-size:13px;min-width:100%}
+.pmc-tbl th,.pmc-tbl td{border:1px solid var(--border);padding:5px 8px;vertical-align:top;text-align:left}
+.pmc-tbl th{background:var(--panel-2)}
+.pmc-tfoot{font-size:12px;color:var(--faint);margin-top:6px}
+.pmc-box{background:var(--panel-2);border-radius:8px;padding:8px 14px;margin:12px 0}
+.pmr-refs{margin-top:24px;font-size:13px;line-height:1.7}
+.pmr-refs summary{cursor:pointer;font-weight:600;font-size:14px}
+.pmr-refs ol{padding-left:14px;list-style:none}
+.pmr-refs li{margin:4px 0}
+.pmr-refs a{color:var(--link)}
+#view-pubmed [hidden]{display:none !important}
+
+#aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
+
 /* ── 公開版專用 ───────────────────────── */
 /* 筆記區要看得到（本機訪客模式原本連同 .cat-extra 一起隱藏）。
    .cat-extra 目前只裝筆記區這一項，問答另外用 a[data-view=qa] 擋著。 */
@@ -987,6 +1111,7 @@ body.guest #noteNew{display:none}
     <button data-view="exams">考古題</button>
     <button data-view="figs">圖表</button>
     <button data-view="imgs">影像</button>
+    <button data-view="pubmed" id="pmTabBtn" hidden title="直接查 PubMed，不耗 AI 額度">PubMed</button>
   </nav>
   <div class="page-chip" id="pageChip" title="切換子頁">
     <span class="pc-icon" id="pcIcon">📚</span>
@@ -994,6 +1119,7 @@ body.guest #noteNew{display:none}
   </div>
   <div class="spacer"></div>
   <span class="pill" id="queuePill">佇列 0</span>
+  <button id="aiBtn" class="ai-btn" hidden title="在右側問 Claude（用你的訂閱額度）">✦ 問 AI</button>
   <button id="loginBtn" hidden>登入</button>
   <button class="gear" id="gearBtn" data-view="settings" title="設定與管理">⚙<span class="gear-dot" id="gearDot" hidden></span></button>
 </header>
@@ -1110,6 +1236,26 @@ body.guest #noteNew{display:none}
       <div id="imgBody"></div>
     </div>
 
+    <div class="view" id="view-pubmed">
+      <h1>PubMed</h1>
+      <div class="pm-bar">
+        <input id="pmQ" placeholder="英文關鍵字，例如 hibernating myocardium">
+        <button class="primary" id="pmGo">搜尋</button>
+      </div>
+      <div class="pm-filters">
+        <button id="pmTopic" title="用目前疾病主題的英文名搜尋">用目前主題</button>
+        <label><input type="checkbox" class="pmType" value="review"> Review</label>
+        <label><input type="checkbox" class="pmType" value="systematic"> 系統性回顧</label>
+        <label><input type="checkbox" class="pmType" value="meta"> 統合分析</label>
+        <label><input type="checkbox" class="pmType" value="rct"> RCT</label>
+        <label><input type="checkbox" class="pmType" value="guideline"> 指引</label>
+        <label><input type="checkbox" id="pmFree"> 免費全文</label>
+        <select id="pmYears"><option value="">不限年份</option><option value="5">近 5 年</option><option value="10">近 10 年</option></select>
+        <select id="pmSort"><option value="relevance">相關度</option><option value="date">最新</option></select>
+      </div>
+      <div id="pmReader" class="pm-reader" hidden></div>
+      <div id="pmList" class="pm-list"></div>
+    </div>
     <div class="view" id="view-settings">
       <h1>設定與管理</h1>
       <nav class="subtabs" id="setTabs">
@@ -1420,6 +1566,30 @@ body.guest #noteNew{display:none}
   <div class="row" style="margin-top:11px"><button class="danger" id="noteDelete">刪除</button><div class="spacer"></div><button id="noteCancel">取消</button><button class="primary" id="noteSave">儲存</button></div>
 </div></div>
 
+<div id="aiPanel" class="ai-panel" hidden>
+  <div class="ai-grip" id="aiGrip" title="拖曳調整寬度（雙擊恢復預設）"></div>
+  <div class="ai-head">
+    <b>✦ 問 AI</b>
+    <select id="aiModel" title="模型：Sonnet 較省額度，Opus 較強">
+      <option value="sonnet">Sonnet</option><option value="opus">Opus</option></select>
+    <label class="ai-web" title="允許 AI 上網搜尋"><input type="checkbox" id="aiWeb"> 上網查</label>
+    <span class="spacer"></span>
+    <button id="aiHistBtn" title="歷史紀錄">紀錄</button>
+    <button id="aiNew" title="開新對話">新對話</button>
+    <button id="aiMax" title="放大／還原對話框">⤢</button>
+    <button id="aiClose" class="ai-x" title="關閉（Esc）">✕</button>
+  </div>
+  <div id="aiChat" class="ai-pane">
+    <div id="aiHist" class="ai-hist" hidden></div>
+    <div id="aiCtx" class="ai-ctx"></div>
+    <div id="aiLog" class="ai-log"></div>
+    <div class="ai-input">
+      <textarea id="aiQ" rows="2" placeholder="輸入問題，Enter 送出（Shift+Enter 換行）"></textarea>
+      <button class="primary" id="aiSend">送出</button>
+    </div>
+  </div>
+</div>
+
 <style>
 #bootBox{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;
   justify-content:center;background:var(--bg,#fff)}
@@ -1442,12 +1612,12 @@ body.guest #noteNew{display:none}
     + '<div class="boot-bar"><i id="bootBar"></i></div></div>';
   document.body.appendChild(box);
   var msg = document.getElementById('bootMsg'), bar = document.getElementById('bootBar');
-  var TOTAL = 10157310;                      // 未壓縮的位元組數，匯出時就算好了
+  var TOTAL = 9373037;                      // 未壓縮的位元組數，匯出時就算好了
   function mb(n) { return (n / 1048576).toFixed(1); }
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-7dacbe34c273.json</div>'
+      + '<div class="boot-detail">網址：data-2660a917b176.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -1456,16 +1626,16 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-b89749cd3876.js';
+    s.src = 'app-6b33f137be94.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-b89749cd3876.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-6b33f137be94.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-7dacbe34c273.json').then(function (r) {
+  fetch('data-2660a917b176.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
@@ -1486,8 +1656,8 @@ body.guest #noteNew{display:none}
     // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
     // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
     if (window.caches) {
-      caches.open('medkb-7dacbe34c273').then(function (c) {
-        c.put('data-7dacbe34c273.json', new Response(text, {
+      caches.open('medkb-2660a917b176').then(function (c) {
+        c.put('data-2660a917b176.json', new Response(text, {
           headers: { 'Content-Type': 'application/json' } }));
       }).catch(function () {});
     }
