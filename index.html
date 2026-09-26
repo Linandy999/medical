@@ -1091,6 +1091,17 @@ body.ai-resizing{user-select:none;cursor:ew-resize}
 .pmr-refs a{color:var(--link)}
 #view-pubmed [hidden]{display:none !important}
 
+/* ---------- 主題內的副主題切換（腦炎／腦膜炎／腦膿瘍…） ---------- */
+.sub-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.sub-chips[hidden]{display:none}
+.sub-chip{border-radius:16px;padding:3px 13px;font-size:13.5px;background:var(--panel)}
+.sub-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sub-chip.on:hover{color:#fff;opacity:.92}
+.sub-group{margin-top:6px}
+.sub-group + .sub-group{margin-top:18px}
+.sub-head{font-weight:700;font-size:14px;color:var(--accent);margin:4px 0 8px;padding-left:9px;
+  border-left:3px solid var(--accent)}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1159,6 +1170,7 @@ body.guest #noteNew{display:none}
         </label>
         <span class="small muted" id="emptyCatHint"></span>
       </div>
+      <div class="sub-chips" id="kbSubChips" hidden></div>
       <div id="kbBody"></div>
     </div>
 
@@ -1612,12 +1624,12 @@ body.guest #noteNew{display:none}
     + '<div class="boot-bar"><i id="bootBar"></i></div></div>';
   document.body.appendChild(box);
   var msg = document.getElementById('bootMsg'), bar = document.getElementById('bootBar');
-  var TOTAL = 9373039;                      // 未壓縮的位元組數，匯出時就算好了
+  var TOTAL = 10212273;                      // 未壓縮的位元組數，匯出時就算好了
   function mb(n) { return (n / 1048576).toFixed(1); }
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-fc9ea717d3f3.json</div>'
+      + '<div class="boot-detail">網址：data-90e58d26668f.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -1626,16 +1638,16 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-6b33f137be94.js';
+    s.src = 'app-ba33614b77d3.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-6b33f137be94.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-ba33614b77d3.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-fc9ea717d3f3.json').then(function (r) {
+  fetch('data-90e58d26668f.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
@@ -1656,8 +1668,8 @@ body.guest #noteNew{display:none}
     // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
     // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
     if (window.caches) {
-      caches.open('medkb-fc9ea717d3f3').then(function (c) {
-        c.put('data-fc9ea717d3f3.json', new Response(text, {
+      caches.open('medkb-90e58d26668f').then(function (c) {
+        c.put('data-90e58d26668f.json', new Response(text, {
           headers: { 'Content-Type': 'application/json' } }));
       }).catch(function () {});
     }

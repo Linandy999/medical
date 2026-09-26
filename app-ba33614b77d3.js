@@ -826,11 +826,69 @@ async function loadKnowledge() {
   if (f.category) qs.set('category', f.category);
   if (f.document_id) qs.set('document_id', f.document_id);
   const { sections } = await api('/knowledge?' + qs.toString());
-  state.sections = sections;
-  renderKnowledge(sections);
+  state.rawSections = sections;
+  state.sections = filterBySub(sections, currentSub());
+  renderKnowledge(state.sections);
+}
+
+/* ---------- 副主題：一個主題裡並存好幾個疾病（腦炎／腦膜炎／腦膿瘍）時，用一排按鈕切換 ----------
+   選了某個副主題就只看它自己的 11 個分類；「全部」則在每個分類底下再依副主題分小標。
+   副主題順序存在 topics.subtopics_json，條目的歸屬是 entries.subtopic。 */
+function topicSubs() {
+  const t = state.topics.find(x => x.id === state.topicId) || state.topic || {};
+  try { const a = JSON.parse(t.subtopics_json || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function subKey() { return 'kbSub:' + state.topicId; }
+function currentSub() {
+  const subs = topicSubs();
+  if (subs.length < 2) return '';
+  let v = '';
+  try { v = localStorage.getItem(subKey()) || ''; } catch (e) { /* 無痕模式 */ }
+  return subs.includes(v) ? v : '';
+}
+function filterBySub(sections, sub) {
+  if (!sub) return sections;
+  return sections.map(s => {
+    const sources = s.sources
+      .map(g => ({ ...g, entries: g.entries.filter(e => (e.subtopic || '') === sub) }))
+      .filter(g => g.entries.length);
+    return { ...s, sources, count: sources.reduce((n, g) => n + g.entries.length, 0) };
+  });
+}
+function renderSubChips() {
+  const box = $('#kbSubChips');
+  const subs = topicSubs();
+  if (subs.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
+  const cur = currentSub();
+  box.hidden = false;
+  box.innerHTML = ['', ...subs].map(n =>
+    `<button class="sub-chip ${n === cur ? 'on' : ''}" data-sub="${esc(n)}">${esc(n || '全部')}</button>`).join('');
+  $$('#kbSubChips [data-sub]').forEach(b => b.onclick = () => {
+    try { localStorage.setItem(subKey(), b.dataset.sub); } catch (e) { /* 無痕模式 */ }
+    state.sections = filterBySub(state.rawSections || [], currentSub());
+    renderKnowledge(state.sections);
+    renderCatNav(state.overview);
+  });
+}
+/* 「全部」模式：同一分類內依副主題分組，沒標副主題的放最後「其他」 */
+function renderBySub(s, subs) {
+  const multi = s.sources.length > 1;
+  const all = [];
+  s.sources.forEach(g => g.entries.forEach(e => all.push([e, multi ? (g.source_label || g.filename) : ''])));
+  const extra = [...new Set(all.map(([e]) => e.subtopic || '').filter(n => n && !subs.includes(n)))];
+  return [...subs, ...extra, ''].map(name => {
+    const list = all.filter(([e]) => (e.subtopic || '') === name);
+    if (!list.length) return '';
+    return `<div class="sub-group"><div class="sub-head">${esc(name || '其他')}</div>
+      ${list.map(([e, lab]) => renderEntry(e, lab)).join('')}</div>`;
+  }).join('');
 }
 
 function renderKnowledge(sections) {
+  renderSubChips();
+  const subs = topicSubs();
+  const grouped = subs.length >= 2 && !currentSub();
   // 隱藏空分類後重新連續編號（1、2、3…），不留下 1、2、6、8 這種跳號
   const items = sections.filter(s => state.showEmptyCats || !catIsEmpty(s));
   const hidden = sections.length - items.length;
@@ -847,7 +905,7 @@ function renderKnowledge(sections) {
         <h2><span class="cat-no">${idx + 1}</span>${esc(s.name)}</h2>
         ${s.count ? '' : '<span class="n">尚無資料</span>'}</div>
       ${s.conflicts.map(c => renderConflict(c)).join('')}
-      ${!s.sources.length ? ((s.exam_questions && s.exam_questions.length) ? '' : '<div class="empty-note">尚無資料</div>') : s.sources.map(g => `
+      ${!s.sources.length ? ((s.exam_questions && s.exam_questions.length) ? '' : '<div class="empty-note">尚無資料</div>') : grouped ? renderBySub(s, subs) : s.sources.map(g => `
         <div class="src-group">
           ${g.entries.map(e => renderEntry(e, s.sources.length > 1 ? (g.source_label || g.filename) : '')).join('')}
         </div>`).join('')}
