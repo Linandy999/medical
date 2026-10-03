@@ -184,6 +184,7 @@
     const year = qs.get('year') ? +qs.get('year') : null;
     const subject = qs.get('subject') || '';
     const examId = qs.get('exam_id') ? +qs.get('exam_id') : null;
+    const questionId = qs.get('question_id') ? +qs.get('question_id') : null;
     const onlyUnmapped = qs.get('only_unmapped') === 'true';
     const q = lc(qs.get('q') || '').trim();
     const limit = +(qs.get('limit') || 100);
@@ -213,6 +214,7 @@
     if (year) rows = rows.filter(x => x.year === year);
     if (subject) rows = rows.filter(x => String(x.subject || '').includes(subject));
     if (examId) rows = rows.filter(x => x.exam_id === examId);
+    if (questionId) rows = rows.filter(x => x.id === questionId);
     if (q) {
       const terms = q.split(/[\s,，、]+/).filter(Boolean);
       rows = rows.filter(x => {
@@ -1506,7 +1508,7 @@ function renderConflict(c) {
 /* 從條目點考題編號時，拉出完整題目（沿用考古題頁的 renderQuestion） */
 async function openExamPeek(qid) {
   try {
-    const { questions } = await api(`/exam-questions?limit=400`);
+    const { questions } = await api(`/exam-questions?question_id=${qid}&limit=1`);
     const q = (questions || []).find(x => x.id === qid);
     if (!q) { toast('找不到這一題', true); return; }
     const box = document.createElement('div');
