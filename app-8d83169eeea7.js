@@ -67,6 +67,8 @@
 
   R['/pages'] = () => ({ pages: DB.pages || [] });
 
+  R['/exam-stats'] = () => (DB.exam_stats || { total: 0, linked: 0, pages: [] });
+
   R['/notes'] = qs => {
     const topicId = qs.get('topic_id') ? +qs.get('topic_id') : null;
     const entryId = qs.get('entry_id') ? +qs.get('entry_id') : null;
@@ -391,6 +393,8 @@
   };
 })();
 
+/* 考古題統計總開關：改成 false 就整組隱藏（首頁卡片數字、主題徽章、熱度排行） */
+const EXAM_STATS = true;
 /* 醫學文獻知識庫 — 前端 */
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -3598,7 +3602,44 @@ async function loadPages(keepSelection = true) {
   }
   renderPageSelect();
   renderPageGrid();
+  renderExamRank();
 }
+/* 首頁「考古題統計」（總覽最下方）：預設收合；各科各自一欄，欄內主題依相關考古題數由多到少排 */
+const ER_SHOW = 5;
+async function renderExamRank() {
+  const box = $('#examRank');
+  if (!box) return;
+  if (!EXAM_STATS) { box.hidden = true; return; }
+  let st;
+  try { st = await api('/exam-stats'); } catch (e) { box.hidden = true; return; }
+  if (!st || !st.pages || !st.pages.length) { box.hidden = true; return; }
+  const max = Math.max(1, ...st.pages.flatMap(p => p.top.map(t => t.n)));
+  const wasOpen = box.open;
+  box.hidden = false;
+  box.innerHTML = `<summary><b>考古題統計</b></summary>
+    <div class="er-cols">${st.pages.map(p => `
+      <div class="er-col" style="--pc:${esc(p.color || 'var(--accent)')}">
+        <div class="er-head">${esc(p.name)}</div>
+        ${p.top.map((t, i) => `
+        <div class="er-row${i >= ER_SHOW ? ' er-more' : ''}" data-page="${p.id}" data-topic="${t.id}" title="開啟「${esc(t.name)}」：${t.n} 題">
+          <span class="er-name">${esc(t.name)}</span>
+          <span class="er-bar"><i style="width:${Math.max(6, Math.round(100 * t.n / max))}%"></i></span>
+          <span class="er-n">${t.n}</span>
+        </div>`).join('')}
+        ${p.top.length > ER_SHOW ? `<button class="er-toggle" data-more="${p.top.length - ER_SHOW}">更多 ${p.top.length - ER_SHOW} 個 ▾</button>` : ''}
+      </div>`).join('')}</div>`;
+  $$('#examRank .er-toggle').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const col = b.closest('.er-col'), open = col.classList.toggle('expanded');
+    b.textContent = open ? '收合 ▴' : `更多 ${b.dataset.more} 個 ▾`;
+  });
+  box.open = wasOpen;
+  $$('#examRank .er-row').forEach(el => el.onclick = async () => {
+    await openPage(+el.dataset.page);
+    await selectTopic(+el.dataset.topic);
+  });
+}
+
 function currentPage() { return state.pages.find(p => p.id === state.pageId) || null; }
 function renderPageSelect() {
   $('#pageSelect').innerHTML = state.pages.map(p =>
