@@ -49,6 +49,16 @@
 
   const R = {};
 
+  // 公開版沒有伺服器可寫入，「已讀」記在這台裝置的瀏覽器裡
+  const READ_KEY = 'medkb.read';
+  function readSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(READ_KEY) || '[]')); }
+    catch (e) { return new Set(); }
+  }
+  function saveRead(set) {
+    try { localStorage.setItem(READ_KEY, JSON.stringify([...set])); } catch (e) { /* 無痕模式等 */ }
+  }
+
   R['/access'] = () => Object.assign(
     { public_read: true, hide_raw_excerpts: true, session_hours: 720 },
     DB.access || {}, { is_admin: false });
@@ -62,7 +72,8 @@
     const q = lc(qs.get('q') || '');
     let rows = (DB.topics || []).filter(t => !pageId || t.page_id === pageId);
     if (q) rows = rows.filter(t => lc(t.name).includes(q) || lc(t.name_en).includes(q));
-    return { topics: rows };
+    const mine = readSet();
+    return { topics: rows.map(t => Object.assign({}, t, { is_read: mine.has(t.id) ? 1 : 0 })) };
   };
 
   R['/pages'] = () => ({ pages: DB.pages || [] });
@@ -357,7 +368,15 @@
     re: new RegExp('^' + k.replace(/:[a-z_]+/g, '([^/]+)') + '$'),
   }));
 
-  async function handle(method, path, search) {
+  async function handle(method, path, search, init) {
+    const mr = method === 'PUT' && path.match(/^\/topics\/(\d+)\/read$/);
+    if (mr) {
+      const set = readSet(); const id = +mr[1];
+      const want = !!(init && init.body && JSON.parse(init.body).read);
+      if (want) set.add(id); else set.delete(id);
+      saveRead(set);
+      return { status: 200, body: { topic_id: id, read: want } };
+    }
     if (method !== 'GET') {
       // 唯讀版沒有寫入端點；交給 app.js 既有的 401 處理
       return { status: 401, body: { detail: '這是唯讀的公開版本，無法修改內容' } };
@@ -384,7 +403,7 @@
     if (!/^\/api\//.test(url)) return realFetch(input, init);
     const method = ((init && init.method) || 'GET').toUpperCase();
     const [path, search] = url.replace(/^\/api/, '').split('?');
-    return handle(method, path, search)
+    return handle(method, path, search, init)
       .catch(err => ({ status: 500, body: { detail: String((err && err.message) || err) } }))
       .then(res => new Response(JSON.stringify(res.body), {
         status: res.status,
@@ -454,13 +473,154 @@ function catName(slug) { return (state.categories.find(c => c.slug === slug) || 
 
 const BQ_COLOR = { '藍': 'blue', '紅': 'red', '黃': 'yellow',
                    blue: 'blue', red: 'red', yellow: 'yellow' };
-/* 極簡 Markdown：條列、表格、引言、粗體、行內程式碼 */
+/* ---------- 貼上筆記：把 AI 回答的表格與格式轉成 Markdown ---------- */
+/* 從網頁複製（ChatGPT、Claude 等）會同時帶 text/html 與 text/plain。
+   純文字版的表格是「Tab 分隔」，沒有直線，md() 認不得，整張表就變成一團字。
+   所以貼上時優先讀 HTML，把表格、清單、粗體等轉成 Markdown 再放進筆記。 */
+function htmlToMd(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,style,meta,link,button,svg,img,noscript').forEach(n => n.remove());
+  const cell = el => inl(el).replace(/\s*\n+\s*/g, ' ').replace(/\|/g, '\\|').trim();
+  function inl(node) {
+    let out = '';
+    node.childNodes.forEach(n => {
+      if (n.nodeType === 3) { out += n.textContent.replace(/\s+/g, ' '); return; }
+      if (n.nodeType !== 1) return;
+      const tag = n.tagName.toLowerCase();
+      if (tag === 'br') { out += '\n'; return; }
+      if (tag === 'strong' || tag === 'b') {
+        const t = inl(n).trim(); out += t ? `**${t}**` : ''; return;
+      }
+      if (tag === 'em' || tag === 'i') {
+        const t = inl(n).trim(); out += t ? `*${t}*` : ''; return;
+      }
+      if (tag === 'code') { out += '`' + n.textContent + '`'; return; }
+      if (tag === 'a') {
+        const t = inl(n).trim(), h = n.getAttribute('href') || '';
+        out += /^https?:/.test(h) && t ? `[${t}](${h})` : t; return;
+      }
+      if (['ul', 'ol', 'table', 'pre', 'blockquote', 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+        out += '\n' + block(n, 0) + '\n'; return;
+      }
+      out += inl(n);
+    });
+    return out;
+  }
+  function table(t) {
+    const rows = [...t.querySelectorAll('tr')].map(tr => [...tr.children]
+      .filter(c => /^(td|th)$/i.test(c.tagName)).map(cell)).filter(r => r.length);
+    if (!rows.length) return '';
+    const n = Math.max(...rows.map(r => r.length));
+    const pad = r => r.concat(Array(n - r.length).fill(''));
+    const line = r => '| ' + pad(r).join(' | ') + ' |';
+    return [line(rows[0]), '| ' + Array(n).fill('---').join(' | ') + ' |', ...rows.slice(1).map(line)].join('\n');
+  }
+  function block(el, depth) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'table') return table(el);
+    if (tag === 'ul' || tag === 'ol') {
+      let i = parseInt(el.getAttribute('start') || '1', 10) || 1;
+      return [...el.children].filter(c => c.tagName.toLowerCase() === 'li').map(li => {
+        // 項目本身的文字，與裡面再巢狀的清單／表格分開處理
+        let text = '', nested = [];
+        li.childNodes.forEach(n => {
+          const nt = n.nodeType === 1 ? n.tagName.toLowerCase() : '';
+          if (nt === 'ul' || nt === 'ol') nested.push(block(n, depth + 1));
+          else if (nt === 'table') nested.push(table(n));
+          else if (nt === 'p' || nt === 'div') text += ' ' + inl(n);
+          else if (n.nodeType === 3) text += n.textContent.replace(/\s+/g, ' ');
+          else if (n.nodeType === 1) text += inl({ childNodes: [n] });
+        });
+        const mark = tag === 'ol' ? `${i++}. ` : '- ';
+        const head = '  '.repeat(depth) + mark + text.replace(/\s*\n+\s*/g, ' ').trim();
+        return [head, ...nested.filter(Boolean)].join('\n');
+      }).join('\n');
+    }
+    if (tag === 'pre') return '```\n' + el.textContent.replace(/\n$/, '') + '\n```';
+    if (tag === 'blockquote') return block({ tagName: 'div', childNodes: el.childNodes }, depth)
+      .split('\n').map(l => '> ' + l).join('\n');
+    if (/^h[1-6]$/.test(tag)) return '#### ' + inl(el).trim();
+    // p / div / 其他容器：逐個子節點處理，區塊元素各自成段
+    const parts = []; let buf = '';
+    const flush = () => { const t = buf.replace(/[ \t]+\n/g, '\n').trim(); if (t) parts.push(t); buf = ''; };
+    el.childNodes.forEach(n => {
+      const nt = n.nodeType === 1 ? n.tagName.toLowerCase() : '';
+      if (['ul', 'ol', 'table', 'pre', 'blockquote', 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr'].includes(nt)) {
+        flush();
+        parts.push(nt === 'hr' ? '---' : block(n, depth));
+      } else if (n.nodeType === 3) buf += n.textContent.replace(/\s+/g, ' ');
+      else buf += inl({ childNodes: [n] });
+    });
+    flush();
+    return parts.filter(Boolean).join('\n\n');
+  }
+  return block(doc.body, 0).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/* 純文字貼上：把「Tab 分隔」的連續幾行轉成 Markdown 表格。
+   表頭常比內容少一格（左上角是空的），這時在表頭最前面補一格空白。 */
+function tabsToMdTables(text) {
+  const lines = String(text).replace(/\r/g, '').split('\n');
+  const out = []; let i = 0;
+  const split = l => l.split('\t').map(c => c.replace(/\|/g, '\\|').trim());
+  while (i < lines.length) {
+    if (!lines[i].includes('\t')) { out.push(lines[i++]); continue; }
+    let j = i;
+    while (j < lines.length && lines[j].includes('\t')) j++;
+    const block = lines.slice(i, j);
+    if (block.length < 2) { out.push(...block); i = j; continue; }
+    const rows = block.map(split);
+    const n = Math.max(...rows.map(r => r.length));
+    if (n < 2) { out.push(...block); i = j; continue; }
+    if (rows[0].length === n - 1) rows[0].unshift('');
+    // 欄位不足的列：原本的對齊空白被壓成了 Tab 少一格，這時把「連續 2 個以上空白」當成欄界補回來
+    rows.forEach((r, k) => {
+      if (k === 0 || r.length >= n) return;
+      for (let c = 0; c < r.length && r.length < n; c++) {
+        const parts = r[c].split(/\s{2,}/).filter(Boolean);
+        if (parts.length > 1 && r.length - 1 + parts.length <= n) { r.splice(c, 1, ...parts); c += parts.length - 1; }
+      }
+    });
+    const line = r => '| ' + r.concat(Array(n - r.length).fill('')).join(' | ') + ' |';
+    out.push(line(rows[0]), '| ' + Array(n).fill('---').join(' | ') + ' |', ...rows.slice(1).map(line));
+    i = j;
+  }
+  return out.join('\n');
+}
+
+(function initNotePaste() {
+  const ta = document.getElementById('noteBody');
+  if (!ta) return;
+  ta.addEventListener('paste', ev => {
+    const cd = ev.clipboardData;
+    if (!cd) return;
+    const html = cd.getData('text/html'), plain = cd.getData('text/plain');
+    let text = null;
+    if (html && /<(table|ul|ol|li|h[1-6]|strong|b|pre|code|blockquote)\b/i.test(html)) {
+      try { text = htmlToMd(html); } catch (e) { text = null; }
+    }
+    if (!text && plain && plain.includes('\t')) text = tabsToMdTables(plain);
+    if (!text) return;                       // 沒什麼要轉的，維持瀏覽器預設貼上
+    ev.preventDefault();
+    const a = ta.selectionStart, b = ta.selectionEnd;
+    ta.value = ta.value.slice(0, a) + text + ta.value.slice(b);
+    ta.selectionStart = ta.selectionEnd = a + text.length;
+    toast('已把貼上的表格與格式轉成筆記格式');
+  });
+})();
+
+/* 極簡 Markdown：條列（含編號）、表格、引言、程式碼區塊、分隔線、粗體、行內程式碼 */
 function md(src) {
   if (!src) return '';
-  const lines = String(src).replace(/\r/g, '').split('\n');
-  const out = []; let list = 0, tbl = null, quote = null;
+  let text = String(src).replace(/\r/g, '');
+  if (text.includes('\t')) text = tabsToMdTables(text);   // 舊筆記裡 Tab 分隔的表格也能正常顯示
+  const lines = text.split('\n');
+  const out = []; let stack = [], tbl = null, quote = null, code = null;
   const inline = t => esc(t)
+    .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+    .replace(/\\\|/g, '|')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     // [詳見：某條目](#entry-條目id-主題id)：站內跳轉，點了捲到那一則（可跨主題）
@@ -471,7 +631,7 @@ function md(src) {
     .replace(/\[([^\]]+)\]\((\/static\/refs\/[\w.\-]+)\)/g,
              (m, t, u) => window.__MEDKB__ ? t + '（僅本機可開）'
                : '<a href="' + u + '" target="_blank" rel="noreferrer">' + t + '</a>');
-  const closeList = () => { while (list > 0) { out.push('</ul>'); list--; } };
+  const closeList = () => { while (stack.length) out.push('</' + stack.pop() + '>'); };
   const closeTbl = () => { if (tbl) { out.push('</tbody></table>'); tbl = null; } };
   // 引言整段收集起來再遞迴丟回 md()，框內的表格與清單才不會被當成純文字
   const closeQuote = () => {
@@ -498,8 +658,20 @@ function md(src) {
     out.push('<blockquote' + cls + '>' + md(body.join('\n')) + '</blockquote>');
     quote = null;
   };
+  // 表格列：以沒被跳脫的 | 切格，欄數不足的補空格，避免一列比一列短
+  const splitRow = l => l.trim().replace(/\\\|/g, '\u0001').replace(/^\|/, '').replace(/\|$/, '')
+    .split('|').map(c => c.replace(/\u0001/g, '\\|').trim());
+  let width = 0;
+  const row = (cells, tag) => '<tr>' + Array.from({ length: width }, (_, k) =>
+    `<${tag}>${inline(cells[k] || '')}</${tag}>`).join('') + '</tr>';
   for (const raw of lines) {
     const line = raw.replace(/\s+$/, '');
+    if (code) {                                   // 程式碼區塊：原樣輸出，直到結尾的 ```
+      if (/^\s*```/.test(line)) { out.push('<pre><code>' + esc(code.join('\n')) + '</code></pre>'); code = null; }
+      else code.push(raw.replace(/\s+$/, ''));
+      continue;
+    }
+    if (/^\s*```/.test(line)) { closeQuote(); closeList(); closeTbl(); code = []; continue; }
     const bq = line.match(/^\s*>\s?(.*)$/);
     if (bq) {
       if (!quote) { closeList(); closeTbl(); quote = []; }
@@ -509,24 +681,34 @@ function md(src) {
     closeQuote();
     if (/^\s*\|.*\|\s*$/.test(line)) {
       if (/^[\s|:-]+$/.test(line)) continue;
-      const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
-      if (!tbl) { closeList(); out.push('<table><thead><tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>'); tbl = 1; }
-      else out.push('<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>');
+      const cells = splitRow(line);
+      if (!tbl) {
+        closeList();
+        width = cells.length;
+        out.push('<table><thead>' + row(cells, 'th') + '</thead><tbody>'); tbl = 1;
+      } else out.push(row(cells, 'td'));
       continue;
     }
     closeTbl();
-    const li = line.match(/^(\s*)[-*+]\s+(.*)$/);
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { closeList(); out.push('<hr>'); continue; }
+    const li = line.match(/^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/);
     if (li) {
-      const depth = Math.floor(li[1].length / 2) + 1;
-      while (list < depth) { out.push('<ul>'); list++; }
-      while (list > depth) { out.push('</ul>'); list--; }
-      out.push(`<li>${inline(li[2])}</li>`); continue;
+      const depth = Math.floor(li[1].replace(/\t/g, '  ').length / 2) + 1;
+      const type = li[2] ? 'ul' : 'ol';
+      while (stack.length > depth) out.push('</' + stack.pop() + '>');
+      if (stack.length === depth && stack[depth - 1] !== type) out.push('</' + stack.pop() + '>');
+      while (stack.length < depth) {
+        out.push(type === 'ol' ? `<ol start="${li[3]}">` : '<ul>');
+        stack.push(type);
+      }
+      out.push(`<li>${inline(li[4])}</li>`); continue;
     }
     closeList();
     if (!line.trim()) continue;
     const h = line.match(/^(#{1,4})\s+(.*)$/);
     out.push(h ? `<p><strong>${inline(h[2])}</strong></p>` : `<p>${inline(line)}</p>`);
   }
+  if (code) out.push('<pre><code>' + esc(code.join('\n')) + '</code></pre>');
   closeList(); closeTbl(); closeQuote();
   return out.join('');
 }
@@ -591,7 +773,7 @@ async function loadTopics() {
       '<div class="empty-note">從左側選一個疾病主題開始閱讀。</div>';
     $('#kbTitle').textContent = '尚未選擇疾病主題';
     $('#kbSub').innerHTML = '';
-    $('#topicEdit').hidden = true;
+    $('#topicEdit').hidden = true; $('#topicReadBox').hidden = true;
     const hint = $('#emptyCatHint'); if (hint) hint.textContent = '';
   }
   else if (!topics.length) {
@@ -599,7 +781,7 @@ async function loadTopics() {
     state.overview = [];
     renderCatNav(null);
     $('#kbTitle').textContent = '此子頁尚無疾病主題';
-    state.topic = null; $('#topicEdit').hidden = true;
+    state.topic = null; $('#topicEdit').hidden = true; $('#topicReadBox').hidden = true;
     $('#kbSub').innerHTML = '';
     $('#kbBody').innerHTML = '';
     $('#sourceList').innerHTML = '<span class="muted small">尚無來源</span>';
@@ -678,6 +860,7 @@ function renderTopics() {
       <div class="topic-row ${open ? 'active' : ''}" data-id="${t.id}"${sortable ? ' draggable="true"' : ''}>
         <span class="caret">${open ? '▾' : '▸'}</span>
         <span class="tname">${esc(t.name)}</span>
+        ${t.is_read ? '<span class="read-mark" title="已讀">✓</span>' : ''}
         ${sortable ? '<span class="topic-grip" title="拖曳調整順序">⠿</span>' : ''}
       </div>
       ${open ? `<div class="cat-nav" id="catNav"></div>` : ''}
@@ -689,7 +872,7 @@ function renderTopics() {
     if (+el.dataset.id === state.topicId) {   // 再點一次收合
       state.topicId = null; state.overview = [];
       renderTopics(); $('#kbBody').innerHTML = ''; $('#kbTitle').textContent = '尚未選擇疾病主題';
-      state.topic = null; $('#topicEdit').hidden = true;
+      state.topic = null; $('#topicEdit').hidden = true; $('#topicReadBox').hidden = true;
       if (onExams) loadExamQuestions(false);
       return;
     }
@@ -824,6 +1007,26 @@ function renderCatNav(overview) {
   });
 }
 
+/* 「已讀」勾選：本機寫進資料庫，公開版存在這台裝置的瀏覽器 */
+function syncReadBox() {
+  const t = state.topics.find(x => x.id === state.topicId);
+  $('#topicReadBox').hidden = !t;
+  $('#topicRead').checked = !!(t && t.is_read);
+}
+$('#topicRead').onchange = async () => {
+  const t = state.topics.find(x => x.id === state.topicId);
+  if (!t) return;
+  const want = $('#topicRead').checked;
+  try {
+    await api(`/topics/${t.id}/read`, { method: 'PUT', body: { read: want } });
+    t.is_read = want ? 1 : 0;
+    renderTopics();
+  } catch (e) {
+    $('#topicRead').checked = !want;
+    toast(e.message, true);
+  }
+};
+
 async function selectTopic(id) {
   state.topicId = id;
   state.activeCat = null;
@@ -837,6 +1040,7 @@ async function selectTopic(id) {
   state.topic = ov.topic;
   $('#kbTitle').textContent = ov.topic.name + (ov.topic.name_en ? `（${ov.topic.name_en}）` : '');
   $('#topicEdit').hidden = !state.isAdmin;
+  syncReadBox();
   $('#kbSub').innerHTML = '';
   await loadKnowledge();
   renderCatNav(state.overview);   // 有了 sections 才知道「只有考題」的分類其實不算空
