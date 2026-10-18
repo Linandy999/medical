@@ -843,6 +843,7 @@ function bindTopicReorder() {
 }
 
 function renderTopics() {
+  renderPageNote();
   const kw = ($('#topicSearch').value || '').toLowerCase();
   const list = state.topics.filter(t => !kw
     || (t.name || '').toLowerCase().includes(kw)
@@ -3860,7 +3861,8 @@ const ICON_CHOICES = [
   ['🩸', '血液'], ['🦴', '骨骼'], ['🦷', '牙科'], ['👁️', '眼'],
   ['👂', '耳'], ['👃', '鼻'], ['🍽️', '消化'], ['🦠', '感染'],
   ['🧬', '遺傳'], ['💊', '藥物'], ['💉', '注射'], ['🩺', '診察'],
-  ['🔬', '顯微鏡'], ['🧪', '檢驗'], ['🩻', '影像'], ['📚', '一般'],
+  ['🔬', '顯微鏡'], ['🧪', '檢驗'], ['🩻', '影像'], ['🎯', '標靶'],
+  ['☣️', '化療'], ['📚', '一般'],
 ];
 
 /* 子頁圖示：img: 開頭是上傳的圖檔，其餘（emoji、文字）直接顯示 */
@@ -3874,6 +3876,25 @@ function pageIconHtml(p, size) {
   return esc(v || '📚');
 }
 
+
+// 子頁備註：不放在總覽卡片，改成知識庫頂端一條可收合的說明（支援表格與站內連結）。
+// 還沒選主題時展開，選了主題就收起來；使用者自己展開或收起的狀態，在同一個主題內不會被重畫蓋掉。
+function renderPageNote() {
+  const box = $('#pageNoteFold');
+  if (!box) return;
+  const p = (state.pages || []).find(x => x.id === state.pageId);
+  const lines = String((p && p.note) || '').split('\n');
+  const first = (lines.find(l => l.trim()) || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\*\*/g, '');
+  box.hidden = !first;
+  if (!first) return;
+  $('#pageNoteSum').textContent = first;
+  const rest = lines.slice(lines.findIndex(l => l.trim()) + 1).join('\n').trim();
+  $('#pageNoteBody').innerHTML = md(rest);
+  box.classList.toggle('no-body', !rest);
+  const key = state.pageId + ':' + (state.topicId || 0);
+  if (box.dataset.key !== key) { box.dataset.key = key; box.open = !!rest && !state.topicId; }
+}
+
 function renderPageGrid() {
   $('#pageGrid').innerHTML = state.pages.map(p => `
     <div class="page-card" data-page="${p.id}" style="--pc:${esc(p.color)}">
@@ -3882,7 +3903,6 @@ function renderPageGrid() {
         <span class="pc-name">${esc(p.name)}</span>
         <button class="pc-edit" data-edit="${p.id}">編輯</button>
       </div>
-      <div class="pc-note">${esc(p.note || '')}</div>
       <div class="pc-stats">
         <div class="pc-stat"><b>${p.topic_count}</b><span>疾病主題</span></div>
         ${p.conflict_count ? `<div class="pc-stat"><b style="color:var(--warn)">${p.conflict_count}</b><span>文獻矛盾</span></div>` : ''}
