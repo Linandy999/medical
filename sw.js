@@ -1,5 +1,5 @@
 
-var CACHE = 'medkb-5b5d7edcb3a9';
+var CACHE = 'medkb-ceba556da96e';
 var KEEP = /\/(app-[0-9a-f]+\.js|data-[0-9a-f]+\.json|t-[0-9]+-[0-9a-f]+\.json)$/;
 
 self.addEventListener('install', function (e) {
