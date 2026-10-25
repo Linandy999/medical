@@ -876,6 +876,9 @@ section.cat.is-empty .cat-no{color:var(--faint)}
 .qe-text{font-size:12px;color:var(--muted);line-height:1.6;margin-top:3px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .qe-row:hover .qe-sec{color:var(--accent)}
+.qe-row[hidden]{display:none}
+.qe-toggle{display:block;font-size:12px;color:var(--ok);padding:6px 0 0;border-top:1px solid var(--border);margin-top:2px;text-decoration:none}
+.qe-toggle:hover{text-decoration:underline}
 .qe-x{width:22px;height:22px;padding:0;flex:0 0 auto;border-radius:50%;cursor:pointer;font-size:12px;
   line-height:1;border:1px solid var(--border);background:var(--panel);color:var(--faint)}
 .qe-x:hover{border-color:var(--danger);color:var(--danger)}
@@ -1681,12 +1684,12 @@ body.guest #noteNew{display:none}
     + '<div class="boot-bar"><i id="bootBar"></i></div></div>';
   document.body.appendChild(box);
   var msg = document.getElementById('bootMsg'), bar = document.getElementById('bootBar');
-  var TOTAL = 2486704;                      // 未壓縮的位元組數，匯出時就算好了
+  var TOTAL = 2665160;                      // 未壓縮的位元組數，匯出時就算好了
   function mb(n) { return (n / 1048576).toFixed(1); }
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-ceba556da96e.json</div>'
+      + '<div class="boot-detail">網址：data-798582a991dc.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -1695,16 +1698,16 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-4a79f94105b2.js';
+    s.src = 'app-fbe79f08f9d1.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-4a79f94105b2.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-fbe79f08f9d1.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-ceba556da96e.json').then(function (r) {
+  fetch('data-798582a991dc.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
@@ -1725,8 +1728,8 @@ body.guest #noteNew{display:none}
     // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
     // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
     if (window.caches) {
-      caches.open('medkb-ceba556da96e').then(function (c) {
-        c.put('data-ceba556da96e.json', new Response(text, {
+      caches.open('medkb-798582a991dc').then(function (c) {
+        c.put('data-798582a991dc.json', new Response(text, {
           headers: { 'Content-Type': 'application/json' } }));
       }).catch(function () {});
     }

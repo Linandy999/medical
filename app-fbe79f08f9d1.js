@@ -1856,13 +1856,14 @@ function examTag(q) {
 
 /* 這題已經人工對應到的內文。跟條目右上角的「✅ 年份」是同一份資料的另一個方向，
    所以不論演算法找不找得到候選，只要標過就一定看得見。 */
+const QE_SHOW = 3;   // 對應的內文超過這個數量就先收起來，後端已依相關性由高到低排好
 function renderQuestionEntries(q) {
   const list = q.entries || [];
   if (!list.length) return '';
   return `<div class="q-entries">
     <div class="qe-head">📖 對應的內文 · ${list.length} 則${state.isAdmin
       ? ` <a href="#" class="qe-add" data-qrelbtn="${q.id}">＋ 再找其他條目</a>` : ''}</div>
-    ${list.map(e => `<div class="qe-row" data-qego="${e.entry_id}" data-qetopic="${e.topic_id}">
+    ${list.map((e, i) => `<div class="qe-row${i >= QE_SHOW ? ' qe-more' : ''}"${i >= QE_SHOW ? ' hidden' : ''} data-qego="${e.entry_id}" data-qetopic="${e.topic_id}">
       <span class="qe-main">
         <span class="qe-sec">${esc(stripOrdinal(e.section) || '（未命名章節）')}</span>
         <span class="qe-topic">${esc(e.topic_name || '')}${e.category ? ' · ' + esc(catName(e.category)) : ''}</span>
@@ -1871,6 +1872,8 @@ function renderQuestionEntries(q) {
       ${state.isAdmin ? `<button class="qe-x" data-qedel="${e.entry_id}" data-qeq="${q.id}"
           title="移除這則對應">✕</button>` : ''}
     </div>`).join('')}
+    ${list.length > QE_SHOW
+      ? `<a href="#" class="qe-toggle" data-qetoggle>展開其餘 ${list.length - QE_SHOW} 則</a>` : ''}
   </div>`;
 }
 
@@ -2068,6 +2071,13 @@ function bindQuestionActions() {
   $$('[data-qrelbtn]').forEach(b => b.onclick = ev => {
     ev.preventDefault(); ev.stopPropagation();   // 也可能是 <a>，要擋掉跳回頁首
     loadQuestionRelated(+b.dataset.qrelbtn, b);
+  });
+  $$('[data-qetoggle]').forEach(a => a.onclick = ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    const box = a.closest('.q-entries'), open = a.dataset.open !== '1';
+    box.querySelectorAll('.qe-more').forEach(r => r.hidden = !open);
+    a.dataset.open = open ? '1' : '';
+    a.textContent = open ? '收合' : `展開其餘 ${box.querySelectorAll('.qe-more').length} 則`;
   });
   $$('[data-qego]').forEach(el => el.onclick = ev => {
     if (ev.target.dataset && ev.target.dataset.qedel) return;
@@ -3883,7 +3893,10 @@ function renderPageNote() {
   const box = $('#pageNoteFold');
   if (!box) return;
   const p = (state.pages || []).find(x => x.id === state.pageId);
-  const lines = String((p && p.note) || '').split('\n');
+  // 主題自己有說明時，進到那個主題就改顯示它（並預設展開），其他主題與子頁仍顯示子頁備註
+  const tp = state.topicId ? (state.topics || []).find(x => +x.id === +state.topicId) : null;
+  const topicNote = String((tp && tp.note) || '').trim();
+  const lines = String(topicNote || (p && p.note) || '').split('\n');
   const first = (lines.find(l => l.trim()) || '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\*\*/g, '');
   box.hidden = !first;
   if (!first) return;
@@ -3892,7 +3905,7 @@ function renderPageNote() {
   $('#pageNoteBody').innerHTML = md(rest);
   box.classList.toggle('no-body', !rest);
   const key = state.pageId + ':' + (state.topicId || 0);
-  if (box.dataset.key !== key) { box.dataset.key = key; box.open = !!rest && !state.topicId; }
+  if (box.dataset.key !== key) { box.dataset.key = key; box.open = !!rest && (!state.topicId || !!topicNote); }
 }
 
 function renderPageGrid() {
