@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f6b5c">
+<meta name="description" content="臨床常用計算公式、輸液、電解質、輸血、評分量表與抗生素劑量表">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MedCalc">
+<title>MedCalc 醫學計算機</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f3ee; --card:#fffdf9; --ink:#1d2321; --muted:#68716d; --line:#e2ded5;
+  --accent:#0f6b5c; --accent-soft:#e1efeb;
+  --ok:#2f7d4f; --ok-bg:#e4f2e8; --warn:#9a6a00; --warn-bg:#fbf0d3; --bad:#b23b2e; --bad-bg:#f8e1dd; --info:#3b5c8f; --info-bg:#e3eaf5;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141716; --card:#1c201f; --ink:#ebeee9; --muted:#9aa39f; --line:#2c3230;
+  --accent:#4fbfa8; --accent-soft:#1f3631;
+  --ok:#78c896; --ok-bg:#1e3326; --warn:#e3b44c; --warn-bg:#3a2f14; --bad:#f08a7c; --bad-bg:#3d201c; --info:#8fb1e6; --info-bg:#1e2a3d;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 60px}
+header.top{display:flex;align-items:baseline;gap:10px;margin:4px 0 16px}
+header.top h1{font-size:24px;margin:0;letter-spacing:.02em}
+header.top span{color:var(--muted);font-size:14px;flex:1}
+header.top a.kb{color:var(--accent);font-size:14px;text-decoration:none;white-space:nowrap}
+body{padding-top:env(safe-area-inset-top)}
+.search{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;outline:none}
+.search:focus{border-color:var(--accent)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;scrollbar-width:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.chip.on{color:#0d1513}}
+.group-title{font-size:13px;color:var(--muted);margin:20px 4px 8px;font-weight:500;letter-spacing:.05em}
+.list{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:1px solid var(--line);cursor:pointer;text-decoration:none;color:inherit}
+.item:first-child{border-top:none}
+.item:hover{background:var(--accent-soft)}
+.item .t{flex:1;min-width:0}
+.item .n{font-weight:500}
+.item .e{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.star{border:none;background:none;font-size:20px;cursor:pointer;color:var(--line);padding:4px;line-height:1}
+.star.on{color:#d9a21b}
+.empty{color:var(--muted);text-align:center;padding:30px}
+/* detail */
+.back{border:none;background:none;color:var(--accent);font:inherit;cursor:pointer;padding:4px 0;margin-bottom:8px}
+.dhead{display:flex;align-items:flex-start;gap:8px}
+.dhead h2{margin:0;font-size:22px;flex:1}
+.dhead .e{color:var(--muted);font-size:14px;margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.field{padding:10px 0;border-top:1px solid var(--line)}
+.field:first-child{border-top:none;padding-top:0}
+.field:last-child{padding-bottom:0}
+.flabel{display:flex;justify-content:space-between;gap:8px;font-size:15px;margin-bottom:6px}
+.flabel small{color:var(--muted)}
+.numrow{display:flex;align-items:center;gap:8px}
+.numrow input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-family:"JetBrains Mono",monospace;font-size:17px;outline:none;min-width:0}
+.numrow input:focus{border-color:var(--accent)}
+.numrow .u{color:var(--muted);font-size:14px;min-width:64px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px;cursor:pointer;text-align:center}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.seg button.on{color:#0d1513}}
+select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.chk{display:flex;align-items:center;gap:12px;cursor:pointer;padding:2px 0}
+.chk input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.chk .l{flex:1}
+.chk .p{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted)}
+.result{}
+.res-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.res-main .lab{color:var(--muted);font-size:14px;width:100%}
+.res-main .v{font-family:"JetBrains Mono",monospace;font-size:36px;font-weight:500;line-height:1.1}
+.res-main .u{color:var(--muted)}
+.rows{margin-top:10px;display:grid;grid-template-columns:38% 1fr;gap:4px 12px;font-size:14px}
+.rows .rv{font-family:"JetBrains Mono",monospace;text-align:right}
+.interp{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14px}
+.lv-ok{background:var(--ok-bg);color:var(--ok)}
+.lv-warn{background:var(--warn-bg);color:var(--warn)}
+.lv-bad{background:var(--bad-bg);color:var(--bad)}
+.lv-info{background:var(--info-bg);color:var(--info)}
+.placeholder{color:var(--muted);font-size:14px}
+.info h3{font-size:14px;margin:0 0 6px;color:var(--muted);font-weight:500}
+.formula{font-family:"JetBrains Mono",monospace;font-size:13px;white-space:pre-wrap;background:var(--bg);border-radius:8px;padding:10px;margin:0 0 12px;overflow-x:auto}
+.note{font-size:14px;margin:0 0 12px}
+.ref{font-size:13px;color:var(--muted);margin:0}
+.reset{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:10px;padding:8px 14px;font:inherit;font-size:14px;cursor:pointer;margin-top:12px}
+.tbl{border-collapse:collapse;font-size:12.5px;width:100%;margin-bottom:12px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left;white-space:nowrap}
+.tbl td:first-child{white-space:normal;min-width:120px}
+.tbl th{color:var(--muted);font-weight:500}
+.abx{margin-top:10px}
+.abx-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.abx-n{font-weight:700;font-size:17px}
+.abx-c{font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px}
+.abx-sp{font-size:13px;color:var(--muted);margin:4px 0 8px}
+.abx-row{display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:14px;padding:4px 0}
+.abx-row b{font-weight:500;color:var(--muted)}
+.tiers{margin:8px 0 4px;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px}
+.tiers div{display:grid;grid-template-columns:72px 1fr;gap:8px;padding:6px 10px;border-top:1px solid var(--line)}
+.tiers div:first-child{border-top:none}
+.tiers div span:first-child{font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--muted)}
+.tiers div.on{background:var(--accent-soft);font-weight:500}
+.abx-note{font-size:13px;margin-top:6px;padding:8px 10px;background:var(--warn-bg);color:var(--warn);border-radius:8px}
+.disclaimer{font-size:12px;color:var(--muted);text-align:center;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+// ---------- helpers ----------
+const n = v => { if (v === '' || v == null) return null; const x = parseFloat(v); return isFinite(x) ? x : null; };
+const has = (v, ...k) => k.every(x => v[x] !== null && v[x] !== undefined && v[x] !== '');
+const f = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d);
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+const SEX = { id: 'sex', label: '性別', type: 'sel', options: [['M', '男'], ['F', '女']], def: 'M' };
+const sum = (v, keys) => keys.reduce((s, k) => s + (Number(v[k]) || 0), 0);
+
+// ---------- calculators ----------
+const CATS = ['一般', '腎臟', '電解質/輸液', '輸血/白蛋白', '酸鹼/呼吸', '心血管', '肝臟', '感染/急重症', '神經', '藥物/抗生素'];
+
+// 輸液成分（mEq/L；P 為 mmol/L；glu 為 g/L）
+const FLUIDS = [
+  { k: 'ns', n: '0.9% NaCl（N/S）', na: 154, k_: 0, cl: 154, glu: 0, osm: 308, other: '' },
+  { k: 'hs', n: '0.45% NaCl（½ N/S）', na: 77, k_: 0, cl: 77, glu: 0, osm: 154, other: '' },
+  { k: 'h3', n: '3% NaCl', na: 513, k_: 0, cl: 513, glu: 0, osm: 1027, other: '' },
+  { k: 'lr', n: '乳酸林格氏液（L/R）', na: 130, k_: 4, cl: 109, glu: 0, osm: 273, other: 'Ca 3、Lactate 28' },
+  { k: 'rg', n: '林格氏液（Ringer）', na: 147, k_: 4, cl: 155.5, glu: 0, osm: 309, other: 'Ca 4.5' },
+  { k: 'pl', n: 'Plasma-Lyte A', na: 140, k_: 5, cl: 98, glu: 0, osm: 294, other: 'Mg 3、Acetate 27、Gluconate 23' },
+  { k: 'd5', n: '5% Dextrose（D5W）', na: 0, k_: 0, cl: 0, glu: 50, osm: 252, other: '' },
+  { k: 'd10', n: '10% Dextrose（D10W）', na: 0, k_: 0, cl: 0, glu: 100, osm: 505, other: '' },
+  { k: 'd5s', n: '5% D/S（D5 + 0.9% NaCl）', na: 154, k_: 0, cl: 154, glu: 50, osm: 560, other: '' },
+  { k: 'd5hs', n: 'D5 + 0.45% NaCl', na: 77, k_: 0, cl: 77, glu: 50, osm: 406, other: '' },
+  { k: 't1', n: '台大一號（Taita No.1）', na: 25, k_: 18, cl: 20, glu: 38, osm: 300, other: 'Mg 3、Acetate 20、P 6 mmol/L', bag: 500 },
+  { k: 't2', n: '台大二號（Taita No.2）', na: 40, k_: 12, cl: 26, glu: 33, osm: 287, other: 'Acetate 20、P 6 mmol/L', bag: 500 },
+  { k: 't3', n: '台大三號（Taita No.3）', na: 75, k_: 12, cl: 61, glu: 20, osm: 285, other: 'Acetate 20、P 6 mmol/L', bag: 500 },
+  { k: 't4', n: '台大四號（Taita No.4）', na: 110, k_: 20, cl: 102, glu: 8, osm: 300, other: 'Acetate 16、P 12 mmol/L', bag: 500 },
+  { k: 't5', n: '台大五號（Taita No.5）', na: 36, k_: 18, cl: 17, glu: 100, osm: 669, other: 'Mg 3、Acetate 28、P 12 mmol/L', bag: 400 }
+];
+const FL = k => FLUIDS.find(x => x.k === k);
+const fluidTable = `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>輸液</th><th>Na</th><th>K</th><th>Cl</th><th>葡萄糖<br>g/L</th><th>kcal/L</th><th>mOsm/L</th><th>其他</th></tr></thead><tbody>${FLUIDS.map(x => `<tr><td>${x.n}</td><td>${x.na}</td><td>${x.k_ || '–'}</td><td>${x.cl || '–'}</td><td>${x.glu || '–'}</td><td>${x.glu ? Math.round(x.glu * 3.4) : '–'}</td><td>${x.osm}</td><td>${x.other || ''}</td></tr>`).join('')}</tbody></table></div>`;
+
+const CALCS = [
+{
+  id: 'bmi', cat: '一般', name: 'BMI 與體表面積', en: 'Body Mass Index / BSA',
+  inputs: [{ id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'h', label: '身高', unit: 'cm', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'w', 'h')) return null;
+    const bmi = v.w / (v.h / 100) ** 2;
+    const most = Math.sqrt(v.h * v.w / 3600), dub = 0.007184 * v.w ** 0.425 * v.h ** 0.725;
+    let lv = 'ok', t = '正常範圍（18.5 ≤ BMI < 24）';
+    if (bmi < 18.5) { lv = 'warn'; t = '體重過輕（BMI < 18.5）'; }
+    else if (bmi >= 27) { lv = 'bad'; t = '肥胖（BMI ≥ 27）'; }
+    else if (bmi >= 24) { lv = 'warn'; t = '過重（24 ≤ BMI < 27）'; }
+    return { main: ['BMI', f(bmi), 'kg/m²'], rows: [['BSA（Mosteller）', f(most, 2) + ' m²'], ['BSA（DuBois）', f(dub, 2) + ' m²']], lv, interp: t };
+  },
+  formula: 'BMI = 體重(kg) / 身高(m)²\nBSA Mosteller = √(身高cm × 體重kg / 3600)\nBSA DuBois = 0.007184 × W^0.425 × H^0.725',
+  note: '分級採台灣衛福部國健署成人標準；亞洲人切點低於 WHO 國際標準（25 / 30）。',
+  ref: 'Mosteller RD. NEJM 1987;317:1098. DuBois D, DuBois EF. Arch Intern Med 1916.'
+},
+{
+  id: 'ibw', cat: '一般', name: '理想體重 / 調整體重', en: 'Ideal & Adjusted Body Weight (Devine)',
+  inputs: [SEX, { id: 'h', label: '身高', unit: 'cm', type: 'num' }, { id: 'w', label: '實際體重', unit: 'kg', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'h')) return null;
+    const inch = v.h / 2.54;
+    const ibw = (v.sex === 'F' ? 45.5 : 50) + 2.3 * (inch - 60);
+    const rows = [];
+    let interp = '用於藥物劑量、呼吸器潮氣量（6–8 mL/kg PBW）等。';
+    rows.push(['潮氣量 6 mL/kg', f(ibw * 6, 0) + ' mL'], ['潮氣量 8 mL/kg', f(ibw * 8, 0) + ' mL']);
+    if (v.w !== null) {
+      const adj = ibw + 0.4 * (v.w - ibw);
+      rows.unshift(['實際 / 理想體重', f(v.w / ibw * 100, 0) + ' %'], ['調整體重 AdjBW', f(adj) + ' kg']);
+      if (v.w / ibw > 1.2) interp = '實際體重 > 理想體重 120%：部分藥物（如 aminoglycoside）建議以調整體重計算。';
+    }
+    if (v.h < 152) interp = '身高 < 152 cm 時 Devine 公式準確度下降，請謹慎使用。';
+    return { main: ['理想體重 IBW', f(ibw), 'kg'], rows, lv: 'info', interp };
+  },
+  formula: 'IBW 男 = 50 + 2.3 × (身高 inch − 60)\nIBW 女 = 45.5 + 2.3 × (身高 inch − 60)\nAdjBW = IBW + 0.4 × (實際體重 − IBW)',
+  note: '理想體重亦即 ARDSNet 的預測體重（PBW）。',
+  ref: 'Devine BJ. Drug Intell Clin Pharm 1974;8:650. ARDSNet. NEJM 2000;342:1301.'
+},
+{
+  id: 'egfr', cat: '腎臟', name: 'eGFR（CKD-EPI 2021）', en: 'CKD-EPI 2021 creatinine equation (race-free)',
+  inputs: [SEX, { id: 'age', label: '年齡', unit: '歲', type: 'num' }, { id: 'scr', label: '血清肌酸酐 Scr', unit: 'mg/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'age', 'scr') || v.scr <= 0) return null;
+    const F = v.sex === 'F', k = F ? 0.7 : 0.9, a = F ? -0.241 : -0.302;
+    const e = 142 * Math.min(v.scr / k, 1) ** a * Math.max(v.scr / k, 1) ** -1.2 * 0.9938 ** v.age * (F ? 1.012 : 1);
+    let st, lv;
+    if (e >= 90) { st = 'G1：正常或偏高（需合併腎損傷證據才診斷 CKD）'; lv = 'ok'; }
+    else if (e >= 60) { st = 'G2：輕度下降'; lv = 'ok'; }
+    else if (e >= 45) { st = 'G3a：輕至中度下降'; lv = 'warn'; }
+    else if (e >= 30) { st = 'G3b：中至重度下降'; lv = 'warn'; }
+    else if (e >= 15) { st = 'G4：重度下降'; lv = 'bad'; }
+    else { st = 'G5：腎衰竭'; lv = 'bad'; }
+    return { main: ['eGFR', f(e, 0), 'mL/min/1.73m²'], rows: [], lv, interp: 'KDIGO 分期 ' + st };
+  },
+  formula: 'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^−1.200 × 0.9938^年齡 × 1.012［女］\nκ：女 0.7、男 0.9\nα：女 −0.241、男 −0.302',
+  note: '需腎功能穩定時使用；急性腎損傷、極端肌肉量、截肢者不準確。',
+  ref: 'Inker LA, et al. NEJM 2021;385:1737–49. KDIGO 2024 CKD Guideline.'
+},
+{
+  id: 'crcl', cat: '腎臟', name: '肌酸酐清除率（Cockcroft-Gault）', en: 'Creatinine Clearance',
+  inputs: [SEX, { id: 'age', label: '年齡', unit: '歲', type: 'num' }, { id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'scr', label: '血清肌酸酐 Scr', unit: 'mg/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'age', 'w', 'scr') || v.scr <= 0) return null;
+    const c = (140 - v.age) * v.w / (72 * v.scr) * (v.sex === 'F' ? 0.85 : 1);
+    const lv = c >= 60 ? 'ok' : c >= 30 ? 'warn' : 'bad';
+    return { main: ['CrCl', f(c, 0), 'mL/min'], rows: [], lv, interp: '多數藥品仿單之腎功能劑量調整（如 DOAC）以 CG 公式為依據。' };
+  },
+  formula: 'CrCl = (140 − 年齡) × 體重 / (72 × Scr)  × 0.85［女］',
+  note: '肥胖病人用實際體重會高估；常改用 IBW 或 AdjBW 計算。',
+  ref: 'Cockcroft DW, Gault MH. Nephron 1976;16:31–41.'
+},
+{
+  id: 'fena', cat: '腎臟', name: '鈉排泄分率 FENa', en: 'Fractional Excretion of Sodium',
+  inputs: [{ id: 'una', label: '尿鈉 UNa', unit: 'mEq/L', type: 'num' }, { id: 'pna', label: '血鈉 PNa', unit: 'mEq/L', type: 'num' }, { id: 'ucr', label: '尿肌酸酐 UCr', unit: 'mg/dL', type: 'num' }, { id: 'pcr', label: '血肌酸酐 PCr', unit: 'mg/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'una', 'pna', 'ucr', 'pcr') || !v.pna || !v.ucr) return null;
+    const fe = v.una * v.pcr / (v.pna * v.ucr) * 100;
+    let lv = 'warn', t = '1–2%：灰色地帶';
+    if (fe < 1) { lv = 'info'; t = '< 1%：傾向腎前性（prerenal）'; }
+    else if (fe > 2) { lv = 'bad'; t = '> 2%：傾向腎因性（如 ATN）'; }
+    return { main: ['FENa', f(fe, 2), '%'], rows: [], lv, interp: t };
+  },
+  formula: 'FENa = (UNa × PCr) / (PNa × UCr) × 100%',
+  note: '使用利尿劑時不準確，可改用 FEUrea。顯影劑腎病變、肌紅素尿、早期阻塞亦可 < 1%。',
+  ref: 'Espinel CH. JAMA 1976;236:579.'
+},
+{
+  id: 'feurea', cat: '腎臟', name: '尿素排泄分率 FEUrea', en: 'Fractional Excretion of Urea',
+  inputs: [{ id: 'uu', label: '尿中尿素氮 UUN', unit: 'mg/dL', type: 'num' }, { id: 'pu', label: '血中尿素氮 BUN', unit: 'mg/dL', type: 'num' }, { id: 'ucr', label: '尿肌酸酐 UCr', unit: 'mg/dL', type: 'num' }, { id: 'pcr', label: '血肌酸酐 PCr', unit: 'mg/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'uu', 'pu', 'ucr', 'pcr') || !v.pu || !v.ucr) return null;
+    const fe = v.uu * v.pcr / (v.pu * v.ucr) * 100;
+    let lv = 'warn', t = '35–50%：灰色地帶';
+    if (fe < 35) { lv = 'info'; t = '< 35%：傾向腎前性'; } else if (fe > 50) { lv = 'bad'; t = '> 50%：傾向腎因性（ATN）'; }
+    return { main: ['FEUrea', f(fe, 1), '%'], rows: [], lv, interp: t };
+  },
+  formula: 'FEUrea = (UUN × PCr) / (BUN × UCr) × 100%',
+  note: '受利尿劑影響較小，適用於已使用 loop / thiazide 利尿劑的病人。',
+  ref: 'Carvounis CP, et al. Kidney Int 2002;62:2223.'
+},
+{
+  id: 'corr-na', cat: '電解質/輸液', name: '高血糖校正血鈉', en: 'Sodium correction for hyperglycemia',
+  inputs: [{ id: 'na', label: '血鈉', unit: 'mEq/L', type: 'num' }, { id: 'glu', label: '血糖', unit: 'mg/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'na', 'glu')) return null;
+    const d = Math.max(0, v.glu - 100) / 100;
+    const katz = v.na + 1.6 * d, hil = v.na + 2.4 * d;
+    return { main: ['校正血鈉（Katz 1.6）', f(katz), 'mEq/L'], rows: [['校正血鈉（Hillier 2.4）', f(hil) + ' mEq/L']], lv: 'info', interp: '血糖 > 400 mg/dL 時，Hillier 係數（2.4）可能較準確。' };
+  },
+  formula: '校正 Na = Na + 1.6 × (血糖 − 100) / 100   (Katz)\n校正 Na = Na + 2.4 × (血糖 − 100) / 100   (Hillier)',
+  note: '用於 DKA / HHS 判斷真實的水分狀態。',
+  ref: 'Katz MA. NEJM 1973;289:843. Hillier TA, et al. Am J Med 1999;106:399.'
+},
+{
+  id: 'corr-ca', cat: '電解質/輸液', name: '白蛋白校正血鈣', en: 'Albumin-corrected calcium',
+  inputs: [{ id: 'ca', label: '總血鈣', unit: 'mg/dL', type: 'num' }, { id: 'alb', label: '白蛋白', unit: 'g/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'ca', 'alb')) return null;
+    const c = v.ca + 0.8 * (4 - v.alb);
+    const lv = c < 8.5 ? 'warn' : c > 10.5 ? 'bad' : 'ok';
+    const t = c < 8.5 ? '低血鈣（< 8.5 mg/dL）' : c > 10.5 ? '高血鈣（> 10.5 mg/dL）' : '正常範圍（約 8.5–10.5 mg/dL）';
+    return { main: ['校正鈣', f(c), 'mg/dL'], rows: [], lv, interp: t };
+  },
+  formula: '校正 Ca = 測得 Ca + 0.8 × (4.0 − 白蛋白)',
+  note: '準確度有限；重症、腎衰竭或酸鹼異常時建議直接測游離鈣（iCa）。',
+  ref: 'Payne RB, et al. BMJ 1973;4:643.'
+},
+{
+  id: 'osm', cat: '電解質/輸液', name: '血清滲透壓與滲透壓差', en: 'Calculated Osmolality & Osmolal Gap',
+  inputs: [{ id: 'na', label: '血鈉', unit: 'mEq/L', type: 'num' }, { id: 'glu', label: '血糖', unit: 'mg/dL', type: 'num' }, { id: 'bun', label: 'BUN', unit: 'mg/dL', type: 'num' }, { id: 'etoh', label: '酒精濃度', unit: 'mg/dL', type: 'num', opt: true }, { id: 'mosm', label: '實測滲透壓', unit: 'mOsm/kg', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'na', 'glu', 'bun')) return null;
+    let c = 2 * v.na + v.glu / 18 + v.bun / 2.8;
+    const rows = [];
+    if (v.etoh !== null) { c += v.etoh / 3.7; rows.push(['含酒精校正', '是（÷3.7）']); }
+    let lv = 'info', t = '正常約 275–295 mOsm/kg。輸入實測滲透壓可計算滲透壓差。';
+    if (v.mosm !== null) {
+      const gap = v.mosm - c;
+      rows.push(['滲透壓差 Osmolal gap', f(gap) + ' mOsm/kg']);
+      if (gap > 10) { lv = 'bad'; t = '滲透壓差 > 10：考慮甲醇、乙二醇、異丙醇等毒性醇類或其他未測得之溶質。'; }
+      else { lv = 'ok'; t = '滲透壓差 ≤ 10：無明顯未測得之滲透壓物質。'; }
+    }
+    return { main: ['計算滲透壓', f(c, 0), 'mOsm/kg'], rows, lv, interp: t };
+  },
+  formula: 'Osm = 2 × Na + 血糖/18 + BUN/2.8 (+ 酒精/3.7)\nOsmolal gap = 實測 − 計算',
+  note: '正常滲透壓差並不能排除毒性醇類中毒（代謝後期 gap 會下降）。',
+  ref: 'Purssell RA, et al. Ann Emerg Med 2001;38:653.'
+},
+{
+  id: 'fwd', cat: '電解質/輸液', name: '自由水缺乏量', en: 'Free Water Deficit',
+  inputs: [SEX, { id: 'old', label: '年齡', type: 'sel', options: [['0', '< 65 歲'], ['1', '≥ 65 歲']], def: '0' }, { id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'na', label: '血鈉', unit: 'mEq/L', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'w', 'na')) return null;
+    const fac = v.sex === 'M' ? (v.old === '1' ? 0.5 : 0.6) : (v.old === '1' ? 0.45 : 0.5);
+    const tbw = v.w * fac, d = tbw * (v.na / 140 - 1);
+    if (v.na <= 140) return { main: ['自由水缺乏量', '0', 'L'], rows: [['TBW', f(tbw) + ' L']], lv: 'ok', interp: '血鈉 ≤ 140，無自由水缺乏。' };
+    return { main: ['自由水缺乏量', f(d, 1), 'L'], rows: [['總體水 TBW', f(tbw) + ' L（體重 × ' + fac + '）']], lv: 'warn', interp: '慢性高血鈉的矯正速度一般建議 ≤ 10–12 mEq/L / 24 h，並需另計持續性的水分流失。' };
+  },
+  formula: 'TBW = 體重 × 係數（男 0.6／女 0.5；≥65 歲 男 0.5／女 0.45）\n自由水缺乏量 = TBW × (Na / 140 − 1)',
+  note: '僅為估算起點，需密切追蹤血鈉調整。',
+  ref: 'Adrogué HJ, Madias NE. NEJM 2000;342:1493.'
+},
+{
+  id: 'adrogue', cat: '電解質/輸液', name: '輸液對血鈉的影響', en: 'Adrogué–Madias formula',
+  inputs: [SEX, { id: 'old', label: '年齡', type: 'sel', options: [['0', '< 65 歲'], ['1', '≥ 65 歲']], def: '0' }, { id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'na', label: '目前血鈉', unit: 'mEq/L', type: 'num' },
+    { id: 'fl', label: '輸液種類', type: 'list', options: FLUIDS.map(x => [x.na + '|' + x.k_, `${x.n}（Na ${x.na}${x.k_ ? ', K ' + x.k_ : ''}）`]), def: '154|0' }],
+  compute(v) {
+    if (!has(v, 'w', 'na')) return null;
+    const fac = v.sex === 'M' ? (v.old === '1' ? 0.5 : 0.6) : (v.old === '1' ? 0.45 : 0.5);
+    const tbw = v.w * fac, [ina, ik] = v.fl.split('|').map(Number);
+    const dNa = (ina + ik - v.na) / (tbw + 1);
+    const rows = [['總體水 TBW', f(tbw) + ' L']];
+    let interp = '每輸注 1 L 預估血鈉變化。';
+    if (Math.abs(dNa) > 0.01) {
+      const L = 8 / Math.abs(dNa);
+      rows.push(['達 8 mEq/L 變化所需量', f(L, 1) + ' L']);
+    }
+    if (v.na < 135 && ina === 513) interp += ' 低血鈉矯正：慢性者 24 h 上升宜 ≤ 8–10 mEq/L，以免滲透性去髓鞘症候群（ODS）。';
+    return { main: ['每 1 L 血鈉變化', (dNa >= 0 ? '+' : '') + f(dNa, 1), 'mEq/L'], rows, lv: 'info', interp };
+  },
+  formula: 'ΔNa (每 1 L) = (輸液 Na + 輸液 K − 血清 Na) / (TBW + 1)',
+  note: '未計入尿液與其他持續流失，實際變化常與預估不同，需每 2–4 小時追蹤血鈉。',
+  ref: 'Adrogué HJ, Madias NE. NEJM 2000;342:1581.'
+},
+{
+  id: 'maint-fluid', cat: '電解質/輸液', name: '維持輸液量（4-2-1 法則）', en: 'Holliday–Segar maintenance fluids',
+  inputs: [{ id: 'w', label: '體重', unit: 'kg', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'w') || v.w <= 0) return null;
+    const w = v.w;
+    const hr = w <= 10 ? 4 * w : w <= 20 ? 40 + 2 * (w - 10) : 60 + (w - 20);
+    const day = w <= 10 ? 100 * w : w <= 20 ? 1000 + 50 * (w - 10) : 1500 + 20 * (w - 20);
+    return { main: ['維持速率', f(hr, 0), 'mL/h'], rows: [['每日總量', f(day, 0) + ' mL/day']], lv: 'info', interp: '成人常以 25–30 mL/kg/day 為參考；需依心、腎功能與臨床狀態調整。' };
+  },
+  formula: '前 10 kg：4 mL/kg/h\n次 10 kg：2 mL/kg/h\n> 20 kg 部分：1 mL/kg/h',
+  note: '住院兒童的維持輸液現多建議等張液，以減少醫源性低血鈉。',
+  ref: 'Holliday MA, Segar WE. Pediatrics 1957;19:823. AAP Clinical Practice Guideline 2018.'
+},
+{
+  id: 'anion-gap', cat: '酸鹼/呼吸', name: '陰離子間隙與 Delta ratio', en: 'Anion Gap / Delta-Delta',
+  inputs: [{ id: 'na', label: 'Na', unit: 'mEq/L', type: 'num' }, { id: 'cl', label: 'Cl', unit: 'mEq/L', type: 'num' }, { id: 'hco3', label: 'HCO₃⁻', unit: 'mEq/L', type: 'num' }, { id: 'alb', label: '白蛋白', unit: 'g/dL', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'na', 'cl', 'hco3')) return null;
+    const ag = v.na - (v.cl + v.hco3);
+    const rows = [];
+    let use = ag;
+    if (v.alb !== null) { use = ag + 2.5 * (4 - v.alb); rows.push(['白蛋白校正 AG', f(use) + ' mEq/L']); }
+    let lv = 'ok', t = 'AG 正常（約 8–12 mEq/L，依各實驗室而定）。';
+    if (use > 12) {
+      lv = 'bad';
+      const dr = (use - 12) / (24 - v.hco3);
+      rows.push(['Delta ratio', (24 - v.hco3) > 0 ? f(dr, 2) : '—']);
+      t = '高陰離子間隙代謝性酸中毒（HAGMA）。';
+      if (24 - v.hco3 > 0) {
+        if (dr < 1) t += ' Delta ratio < 1：合併正常 AG 代謝性酸中毒。';
+        else if (dr <= 2) t += ' Delta ratio 1–2：單純 HAGMA。';
+        else t += ' Delta ratio > 2：合併代謝性鹼中毒或先前慢性呼吸性酸中毒。';
+      }
+    } else if (use < 6) { lv = 'warn'; t = 'AG 偏低：考慮低白蛋白、M 蛋白（多發性骨髓瘤）、鋰中毒、實驗室誤差。'; }
+    return { main: ['陰離子間隙 AG', f(ag), 'mEq/L'], rows, lv, interp: t };
+  },
+  formula: 'AG = Na − (Cl + HCO₃⁻)\n校正 AG = AG + 2.5 × (4.0 − 白蛋白)\nDelta ratio = (AG − 12) / (24 − HCO₃⁻)',
+  note: 'HAGMA 常見原因可記 MUDPILES 或 GOLDMARK。',
+  ref: 'Kraut JA, Madias NE. Clin J Am Soc Nephrol 2007;2:162. Figge J, et al. Crit Care Med 1998;26:1807.'
+},
+{
+  id: 'winters', cat: '酸鹼/呼吸', name: 'Winter 公式（代償 PaCO₂）', en: "Winter's formula",
+  inputs: [{ id: 'hco3', label: 'HCO₃⁻', unit: 'mEq/L', type: 'num' }, { id: 'pco2', label: '實測 PaCO₂', unit: 'mmHg', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'hco3')) return null;
+    const e = 1.5 * v.hco3 + 8;
+    const rows = [['預期範圍', f(e - 2) + ' – ' + f(e + 2) + ' mmHg']];
+    let lv = 'info', t = '適用於代謝性酸中毒時評估呼吸代償。';
+    if (v.pco2 !== null) {
+      if (v.pco2 > e + 2) { lv = 'bad'; t = '實測 PaCO₂ 高於預期：合併呼吸性酸中毒。'; }
+      else if (v.pco2 < e - 2) { lv = 'warn'; t = '實測 PaCO₂ 低於預期：合併呼吸性鹼中毒。'; }
+      else { lv = 'ok'; t = '在預期範圍內：呼吸代償適當。'; }
+    }
+    return { main: ['預期 PaCO₂', f(e), 'mmHg'], rows, lv, interp: t };
+  },
+  formula: '預期 PaCO₂ = 1.5 × HCO₃⁻ + 8 ± 2',
+  note: '僅適用於原發性代謝性酸中毒。',
+  ref: 'Albert MS, Dell RB, Winters RW. Ann Intern Med 1967;66:312.'
+},
+{
+  id: 'aa-gradient', cat: '酸鹼/呼吸', name: 'A-a 梯度 與 P/F ratio', en: 'Alveolar–arterial gradient',
+  inputs: [{ id: 'fio2', label: 'FiO₂', unit: '%', type: 'num', def: '21' }, { id: 'pao2', label: 'PaO₂', unit: 'mmHg', type: 'num' }, { id: 'pco2', label: 'PaCO₂', unit: 'mmHg', type: 'num' }, { id: 'age', label: '年齡', unit: '歲', type: 'num' }, { id: 'patm', label: '大氣壓', unit: 'mmHg', type: 'num', def: '760' }],
+  compute(v) {
+    if (!has(v, 'fio2', 'pao2', 'pco2', 'age', 'patm')) return null;
+    const fi = v.fio2 / 100;
+    const PA = fi * (v.patm - 47) - v.pco2 / 0.8;
+    const g = PA - v.pao2, exp = v.age / 4 + 4, pf = v.pao2 / fi;
+    const rows = [['PAO₂（肺泡）', f(PA) + ' mmHg'], ['年齡預期上限', f(exp) + ' mmHg'], ['P/F ratio', f(pf, 0)]];
+    let lv, t;
+    if (g > exp) { lv = 'bad'; t = 'A-a 梯度上升：V/Q 不匹配、分流或瀰散障礙。'; }
+    else { lv = 'ok'; t = 'A-a 梯度正常：若有低血氧，考慮換氣不足或吸入氧分壓低。'; }
+    if (pf <= 300) t += ` P/F ${f(pf, 0)}：若符合 Berlin 定義（PEEP ≥ 5）為 ${pf <= 100 ? '重度' : pf <= 200 ? '中度' : '輕度'} ARDS 範圍。`;
+    return { main: ['A-a gradient', f(g), 'mmHg'], rows, lv, interp: t };
+  },
+  formula: 'PAO₂ = FiO₂ × (Patm − 47) − PaCO₂ / 0.8\nA-a = PAO₂ − PaO₂\n預期上限 ≈ 年齡/4 + 4',
+  note: 'FiO₂ 越高，A-a 梯度正常值越大；高 FiO₂ 時以 P/F ratio 判讀較常用。',
+  ref: 'ARDS Definition Task Force. JAMA 2012;307:2526.'
+},
+{
+  id: 'map', cat: '心血管', name: '平均動脈壓 MAP', en: 'Mean Arterial Pressure',
+  inputs: [{ id: 'sbp', label: '收縮壓', unit: 'mmHg', type: 'num' }, { id: 'dbp', label: '舒張壓', unit: 'mmHg', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'sbp', 'dbp')) return null;
+    const m = (v.sbp + 2 * v.dbp) / 3;
+    const lv = m < 65 ? 'bad' : 'ok';
+    return { main: ['MAP', f(m, 0), 'mmHg'], rows: [['脈壓', f(v.sbp - v.dbp, 0) + ' mmHg']], lv, interp: m < 65 ? 'MAP < 65 mmHg：器官灌流不足風險（敗血性休克目標 ≥ 65）。' : 'MAP ≥ 65 mmHg。' };
+  },
+  formula: 'MAP = (SBP + 2 × DBP) / 3',
+  note: '',
+  ref: 'Surviving Sepsis Campaign 2021.'
+},
+{
+  id: 'qtc', cat: '心血管', name: '校正 QT 間期 QTc', en: 'Corrected QT interval',
+  inputs: [SEX, { id: 'qt', label: 'QT', unit: 'ms', type: 'num' }, { id: 'hr', label: '心跳', unit: 'bpm', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'qt', 'hr') || v.hr <= 0) return null;
+    const rr = 60 / v.hr;
+    const baz = v.qt / Math.sqrt(rr), fri = v.qt / Math.cbrt(rr), fra = v.qt + 154 * (1 - rr), hod = v.qt + 1.75 * (v.hr - 60);
+    const lim = v.sex === 'F' ? 460 : 450;
+    let lv = 'ok', t = `QTc 正常（${v.sex === 'F' ? '女 ≤ 460' : '男 ≤ 450'} ms）。`;
+    if (fri >= 500 || baz >= 500) { lv = 'bad'; t = 'QTc ≥ 500 ms：Torsades de pointes 風險顯著上升，檢視延長 QT 藥物與電解質（K、Mg、Ca）。'; }
+    else if (baz > lim || fri > lim) { lv = 'warn'; t = 'QTc 延長，檢視藥物與電解質。'; }
+    return { main: ['QTc（Bazett）', f(baz, 0), 'ms'], rows: [['Fridericia', f(fri, 0) + ' ms'], ['Framingham', f(fra, 0) + ' ms'], ['Hodges', f(hod, 0) + ' ms'], ['RR', f(rr, 2) + ' s']], lv, interp: t + (v.hr > 90 || v.hr < 60 ? ' 心跳偏快或偏慢時 Bazett 誤差大，建議參考 Fridericia。' : '') };
+  },
+  formula: 'Bazett = QT / √RR\nFridericia = QT / ∛RR\nFramingham = QT + 154 × (1 − RR)\nHodges = QT + 1.75 × (HR − 60)\nRR = 60 / HR（秒）',
+  note: '',
+  ref: 'Rautaharju PM, et al. AHA/ACCF/HRS Recommendations. Circulation 2009;119:e241.'
+},
+{
+  id: 'ldl', cat: '心血管', name: 'LDL-C（Friedewald）', en: 'Friedewald LDL & non-HDL',
+  inputs: [{ id: 'tc', label: '總膽固醇', unit: 'mg/dL', type: 'num' }, { id: 'hdl', label: 'HDL-C', unit: 'mg/dL', type: 'num' }, { id: 'tg', label: '三酸甘油酯', unit: 'mg/dL', type: 'num' }],
+  compute(v) {
+    if (!has(v, 'tc', 'hdl', 'tg')) return null;
+    const ldl = v.tc - v.hdl - v.tg / 5, non = v.tc - v.hdl;
+    if (v.tg >= 400) return { main: ['LDL-C', '—', ''], rows: [['non-HDL-C', f(non, 0) + ' mg/dL']], lv: 'warn', interp: 'TG ≥ 400 mg/dL 時 Friedewald 公式不適用，請直接測 LDL-C 或參考 non-HDL-C。' };
+    return { main: ['LDL-C', f(ldl, 0), 'mg/dL'], rows: [['non-HDL-C', f(non, 0) + ' mg/dL']], lv: 'info', interp: 'LDL 目標值依心血管風險分級而定。LDL < 70 或 TG 150–400 時 Friedewald 準確度下降，可考慮 Martin/Hopkins 或 Sampson 公式。' };
+  },
+  formula: 'LDL-C = TC − HDL-C − TG / 5\nnon-HDL-C = TC − HDL-C',
+  note: '',
+  ref: 'Friedewald WT, et al. Clin Chem 1972;18:499.'
+},
+{
+  id: 'cha2ds2-vasc', cat: '心血管', name: 'CHA₂DS₂-VASc', en: 'Stroke risk in atrial fibrillation', score: true,
+  inputs: [
+    { id: 'c', label: '充血性心衰竭 / 左心室功能不全', type: 'chk', pts: 1 },
+    { id: 'h', label: '高血壓', type: 'chk', pts: 1 },
+    { id: 'age', label: '年齡', type: 'sel', options: [['0', '< 65'], ['1', '65–74'], ['2', '≥ 75']], def: '0' },
+    { id: 'd', label: '糖尿病', type: 'chk', pts: 1 },
+    { id: 's', label: '中風 / TIA / 血栓栓塞病史', type: 'chk', pts: 2 },
+    { id: 'v', label: '血管疾病（MI、PAD、主動脈斑塊）', type: 'chk', pts: 1 },
+    { id: 'sex', label: '性別', type: 'sel', options: [['0', '男'], ['1', '女']], def: '0' }],
+  compute(v) {
+    const s = sum(v, ['c', 'h', 'age', 'd', 's', 'v', 'sex']);
+    const non = s - Number(v.sex);
+    let lv, t;
+    if (non >= 2) { lv = 'bad'; t = '建議口服抗凝血劑（OAC）。'; }
+    else if (non === 1) { lv = 'warn'; t = '應考慮口服抗凝血劑，需個別評估。'; }
+    else { lv = 'ok'; t = '低風險，一般不需抗凝血。'; }
+    return { main: ['CHA₂DS₂-VASc', String(s), '分'], rows: [['不計性別分數（CHA₂DS₂-VA）', non + ' 分']], lv, interp: t + '（依不計性別分數判讀：2024 ESC 改用 CHA₂DS₂-VA；以 VASc 判讀時對應門檻為男 ≥ 2／女 ≥ 3 建議、男 1／女 2 考慮。）' };
+  },
+  formula: 'C 心衰竭 1｜H 高血壓 1｜A₂ ≥75 歲 2｜D 糖尿病 1\nS₂ 中風/TIA 2｜V 血管疾病 1｜A 65–74 歲 1｜Sc 女性 1',
+  note: '女性本身不是獨立的風險因子，而是風險修飾因子。',
+  ref: 'Lip GYH, et al. Chest 2010;137:263. 2024 ESC AF Guidelines. 2023 ACC/AHA/ACCP/HRS AF Guideline.'
+},
+{
+  id: 'has-bled', cat: '心血管', name: 'HAS-BLED', en: 'Bleeding risk on anticoagulation', score: true,
+  inputs: [
+    { id: 'h', label: 'H 未控制高血壓（SBP > 160）', type: 'chk', pts: 1 },
+    { id: 'r', label: 'A 腎功能異常（透析、移植、Cr > 2.26 mg/dL）', type: 'chk', pts: 1 },
+    { id: 'l', label: 'A 肝功能異常（肝硬化或 Bil > 2×、AST/ALT > 3× ULN）', type: 'chk', pts: 1 },
+    { id: 's', label: 'S 中風病史', type: 'chk', pts: 1 },
+    { id: 'b', label: 'B 出血病史或出血體質', type: 'chk', pts: 1 },
+    { id: 'i', label: 'L INR 不穩定（TTR < 60%）', type: 'chk', pts: 1 },
+    { id: 'e', label: 'E 年齡 > 65 歲', type: 'chk', pts: 1 },
+    { id: 'dr', label: 'D 合併用藥（抗血小板、NSAID）', type: 'chk', pts: 1 },
+    { id: 'al', label: 'D 酗酒（≥ 8 單位/週）', type: 'chk', pts: 1 }],
+  compute(v) {
+    const s = sum(v, ['h', 'r', 'l', 's', 'b', 'i', 'e', 'dr', 'al']);
+    const hi = s >= 3;
+    return { main: ['HAS-BLED', String(s), '分'], rows: [], lv: hi ? 'bad' : s === 2 ? 'warn' : 'ok', interp: hi ? '≥ 3 分：出血高風險，應矯正可改變的危險因子並密切追蹤；高分本身不是停用抗凝血劑的理由。' : '出血風險較低至中等，仍應處理可改變的因子。' };
+  },
+  formula: '每項 1 分，總分 0–9',
+  note: '',
+  ref: 'Pisters R, et al. Chest 2010;138:1093.'
+},
+{
+  id: 'meld-na', cat: '肝臟', name: 'MELD-Na', en: 'Model for End-Stage Liver Disease (UNOS 2016)',
+  inputs: [{ id: 'cr', label: 'Creatinine', unit: 'mg/dL', type: 'num' }, { id: 'bil', label: '總膽紅素', unit: 'mg/dL', type: 'num' }, { id: 'inr', label: 'INR', unit: '', type: 'num' }, { id: 'na', label: '血鈉', unit: 'mEq/L', type: 'num' }, { id: 'dia', label: '過去一週透析 ≥ 2 次或 CVVHD ≥ 24 h', type: 'chk', pts: 1 }],
+  compute(v) {
+    if (!has(v, 'cr', 'bil', 'inr', 'na') || v.cr <= 0 || v.bil <= 0 || v.inr <= 0) return null;
+    const cr = v.dia ? 4 : clamp(v.cr, 1, 4), bil = Math.max(1, v.bil), inr = Math.max(1, v.inr), na = clamp(v.na, 125, 137);
+    let meld = Math.round((0.957 * Math.log(cr) + 0.378 * Math.log(bil) + 1.120 * Math.log(inr) + 0.643) * 10);
+    let mna = meld;
+    if (meld > 11) mna = Math.round(meld + 1.32 * (137 - na) - 0.033 * meld * (137 - na));
+    mna = Math.min(40, mna); meld = Math.min(40, meld);
+    const mort = mna < 10 ? '約 1.9%' : mna < 20 ? '約 6.0%' : mna < 30 ? '約 19.6%' : mna < 40 ? '約 52.6%' : '約 71.3%';
+    const lv = mna < 10 ? 'ok' : mna < 20 ? 'warn' : 'bad';
+    return { main: ['MELD-Na', String(mna), '分'], rows: [['MELD（原始）', meld + ' 分'], ['三個月死亡率（參考）', mort]], lv, interp: '分數越高，三個月死亡率越高；常用於肝移植排序與 TIPS 等術前風險評估。' };
+  },
+  formula: 'MELD = 10 × (0.957 ln Cr + 0.378 ln Bil + 1.120 ln INR + 0.643)\nMELD > 11 時：\nMELD-Na = MELD + 1.32 × (137 − Na) − 0.033 × MELD × (137 − Na)\n下限：Cr、Bil、INR 最低 1.0；Cr 上限 4.0；Na 限制在 125–137',
+  note: '美國 OPTN 自 2023 年起改用 MELD 3.0（加入性別與白蛋白）；死亡率對應值取自 Wiesner 2003（以 MELD 推導），僅供參考。',
+  ref: 'Kim WR, et al. NEJM 2008;359:1018. Wiesner R, et al. Gastroenterology 2003;124:91.'
+},
+{
+  id: 'child-pugh', cat: '肝臟', name: 'Child-Pugh 分級', en: 'Child–Turcotte–Pugh score', score: true,
+  inputs: [
+    { id: 'bil', label: '總膽紅素', type: 'sel', options: [['1', '< 2 mg/dL'], ['2', '2–3'], ['3', '> 3']], def: '1' },
+    { id: 'alb', label: '白蛋白', type: 'sel', options: [['1', '> 3.5 g/dL'], ['2', '2.8–3.5'], ['3', '< 2.8']], def: '1' },
+    { id: 'inr', label: 'INR', type: 'sel', options: [['1', '< 1.7'], ['2', '1.7–2.3'], ['3', '> 2.3']], def: '1' },
+    { id: 'asc', label: '腹水', type: 'sel', options: [['1', '無'], ['2', '輕度'], ['3', '中重度']], def: '1' },
+    { id: 'he', label: '肝腦病變', type: 'sel', options: [['1', '無'], ['2', 'Grade 1–2'], ['3', 'Grade 3–4']], def: '1' }],
+  compute(v) {
+    const s = sum(v, ['bil', 'alb', 'inr', 'asc', 'he']);
+    const c = s <= 6 ? 'A' : s <= 9 ? 'B' : 'C';
+    const t = { A: 'Class A（5–6 分）：代償良好', B: 'Class B（7–9 分）：明顯功能受損', C: 'Class C（10–15 分）：失代償' }[c];
+    return { main: ['Child-Pugh', s + ' 分', 'Class ' + c], rows: [], lv: c === 'A' ? 'ok' : c === 'B' ? 'warn' : 'bad', interp: t + '。常用於藥物劑量調整與手術風險評估。' };
+  },
+  formula: '五項各 1–3 分，總分 5–15\nA 5–6｜B 7–9｜C 10–15',
+  note: 'PBC / PSC 等膽汁滯留疾病的膽紅素切點不同（< 4、4–10、> 10 mg/dL）。',
+  ref: 'Pugh RNH, et al. Br J Surg 1973;60:646.'
+},
+{
+  id: 'qsofa', cat: '感染/急重症', name: 'qSOFA', en: 'Quick SOFA', score: true,
+  inputs: [{ id: 'rr', label: '呼吸速率 ≥ 22 次/分', type: 'chk', pts: 1 }, { id: 'ms', label: '意識改變（GCS < 15）', type: 'chk', pts: 1 }, { id: 'bp', label: '收縮壓 ≤ 100 mmHg', type: 'chk', pts: 1 }],
+  compute(v) {
+    const s = sum(v, ['rr', 'ms', 'bp']);
+    return { main: ['qSOFA', String(s), '分'], rows: [], lv: s >= 2 ? 'bad' : 'ok', interp: s >= 2 ? '≥ 2 分：疑似感染者預後不良風險較高，進一步評估器官功能（SOFA）。' : '< 2 分：不能據此排除敗血症。' };
+  },
+  formula: '每項 1 分，總分 0–3',
+  note: 'Surviving Sepsis Campaign 2021 不建議單獨以 qSOFA 作為敗血症篩檢工具。',
+  ref: 'Seymour CW, et al. JAMA 2016;315:762. Evans L, et al. Crit Care Med 2021;49:e1063.'
+},
+{
+  id: 'curb-65', cat: '感染/急重症', name: 'CURB-65', en: 'Pneumonia severity', score: true,
+  inputs: [{ id: 'c', label: 'C 意識混亂', type: 'chk', pts: 1 }, { id: 'u', label: 'U BUN > 19 mg/dL（Urea > 7 mmol/L）', type: 'chk', pts: 1 }, { id: 'r', label: 'R 呼吸速率 ≥ 30 次/分', type: 'chk', pts: 1 }, { id: 'b', label: 'B SBP < 90 或 DBP ≤ 60 mmHg', type: 'chk', pts: 1 }, { id: 'a', label: '65 年齡 ≥ 65 歲', type: 'chk', pts: 1 }],
+  compute(v) {
+    const s = sum(v, ['c', 'u', 'r', 'b', 'a']);
+    let lv = 'ok', t = '0–1 分：低風險，可考慮門診治療。';
+    if (s === 2) { lv = 'warn'; t = '2 分：中度風險，考慮短期住院或密切追蹤的門診治療。'; }
+    else if (s >= 3) { lv = 'bad'; t = '≥ 3 分：重度肺炎，需住院；4–5 分考慮加護病房。'; }
+    return { main: ['CURB-65', String(s), '分'], rows: [], lv, interp: t };
+  },
+  formula: '每項 1 分，總分 0–5',
+  note: 'ATS/IDSA 較推薦 PSI 作為收治判斷，CURB-65 方便床邊使用。',
+  ref: 'Lim WS, et al. Thorax 2003;58:377.'
+},
+{
+  id: 'wells-pe', cat: '感染/急重症', name: 'Wells 肺栓塞評分', en: "Wells' criteria for PE", score: true,
+  inputs: [
+    { id: 'dvt', label: 'DVT 臨床徵象（下肢腫脹、深靜脈壓痛）', type: 'chk', pts: 3 },
+    { id: 'alt', label: 'PE 為最可能診斷', type: 'chk', pts: 3 },
+    { id: 'hr', label: '心跳 > 100 次/分', type: 'chk', pts: 1.5 },
+    { id: 'imm', label: '臥床 ≥ 3 天或 4 週內手術', type: 'chk', pts: 1.5 },
+    { id: 'prev', label: '過去 DVT / PE 病史', type: 'chk', pts: 1.5 },
+    { id: 'hem', label: '咳血', type: 'chk', pts: 1 },
+    { id: 'ca', label: '惡性腫瘤（6 個月內治療或安寧中）', type: 'chk', pts: 1 }],
+  compute(v) {
+    const s = sum(v, ['dvt', 'alt', 'hr', 'imm', 'prev', 'hem', 'ca']);
+    const three = s > 6 ? '高可能性' : s >= 2 ? '中可能性' : '低可能性';
+    const likely = s > 4;
+    return { main: ['Wells PE', String(s), '分'], rows: [['三級分類', three], ['二級分類', likely ? 'PE likely（> 4）' : 'PE unlikely（≤ 4）']], lv: likely ? 'bad' : 'ok', interp: likely ? 'PE likely：建議直接安排 CTPA。' : 'PE unlikely：以 D-dimer 排除；低可能性者可先評估 PERC。' };
+  },
+  formula: '三級：< 2 低｜2–6 中｜> 6 高\n二級：≤ 4 unlikely｜> 4 likely',
+  note: '',
+  ref: 'Wells PS, et al. Thromb Haemost 2000;83:416. 2019 ESC PE Guidelines.'
+},
+{
+  id: 'gcs', cat: '神經', name: '格拉斯哥昏迷指數 GCS', en: 'Glasgow Coma Scale', score: true,
+  inputs: [
+    { id: 'e', label: '睜眼 Eye', type: 'list', options: [['4', 'E4 自發睜眼'], ['3', 'E3 對聲音睜眼'], ['2', 'E2 對疼痛刺激睜眼'], ['1', 'E1 無反應']], def: '4' },
+    { id: 'vb', label: '語言 Verbal', type: 'list', options: [['5', 'V5 定向力正常'], ['4', 'V4 混亂對答'], ['3', 'V3 不適當的字詞'], ['2', 'V2 無法理解的聲音'], ['1', 'V1 無反應']], def: '5' },
+    { id: 'm', label: '運動 Motor', type: 'list', options: [['6', 'M6 遵從指令'], ['5', 'M5 可定位疼痛'], ['4', 'M4 肢體回縮'], ['3', 'M3 異常屈曲（去皮質）'], ['2', 'M2 伸直（去大腦）'], ['1', 'M1 無反應']], def: '6' }],
+  compute(v) {
+    const s = sum(v, ['e', 'vb', 'm']);
+    let lv = 'ok', t = '13–15：輕度腦傷';
+    if (s <= 8) { lv = 'bad'; t = '≤ 8：重度腦傷，考慮保護呼吸道（插管）'; }
+    else if (s <= 12) { lv = 'warn'; t = '9–12：中度腦傷'; }
+    return { main: ['GCS', String(s), `E${v.e}V${v.vb}M${v.m}`], rows: [], lv, interp: t + '。插管病人語言無法評估時記作 VT。' };
+  },
+  formula: 'E（1–4）+ V（1–5）+ M（1–6），總分 3–15',
+  note: '紀錄時建議寫出各分項（如 E3V4M6），比總分更有臨床意義。',
+  ref: 'Teasdale G, Jennett B. Lancet 1974;2:81.'
+}
+];
+
+// ======================= 新增：輸液 / 電解質 / 輸血 / 評分 / 藥物 =======================
+const TBWF = v => v.sex === 'M' ? (v.old === '1' ? 0.5 : 0.6) : (v.old === '1' ? 0.45 : 0.5);
+const OLD = { id: 'old', label: '年齡', type: 'sel', options: [['0', '< 65 歲'], ['1', '≥ 65 歲']], def: '0' };
+
+CALCS.push(
+{
+  id: 'fluid', cat: '電解質/輸液', name: '輸液選擇與成分（台大、N/S、L/R）', en: 'IV fluid composition',
+  inputs: [{ id: 'fl', label: '輸液', type: 'list', options: FLUIDS.map(x => [x.k, x.n]), def: 'ns' }, { id: 'vol', label: '輸注量', unit: 'mL', type: 'num', def: '1000' }, { id: 'hrs', label: '輸注時間', unit: '小時', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'vol')) return null;
+    const x = FL(v.fl), L = v.vol / 1000;
+    const rows = [['Na', f(x.na * L, 1) + ' mEq'], ['K', f(x.k_ * L, 1) + ' mEq'], ['Cl', f(x.cl * L, 1) + ' mEq'], ['葡萄糖', f(x.glu * L, 1) + ' g'], ['熱量', f(x.glu * L * 3.4, 0) + ' kcal'], ['滲透壓', x.osm + ' mOsm/L'], ['無電解質水比例', f(Math.max(0, 1 - (x.na + x.k_) / 154) * 100, 0) + ' %']];
+    if (x.other) rows.push(['其他（每 L）', x.other]);
+    if (x.bag) rows.push(['每包容量', x.bag + ' mL']);
+    if (v.hrs) rows.unshift(['輸注速率', f(v.vol / v.hrs, 0) + ' mL/h']);
+    let t = '';
+    if (['ns', 'rg', 'pl', 'lr'].includes(x.k)) t = '等張晶體液：主要分布於細胞外液，用於容積復甦。大量 N/S 易造成高氯性代謝性酸中毒，平衡液（L/R、Plasma-Lyte）較少。';
+    else if (x.k === 'h3') t = '高張液：用於症狀性低血鈉或腦水腫，需密切追蹤血鈉。';
+    else if (x.k.startsWith('t')) t = '台大系列為低鈉、含鉀/磷/醋酸根的維持液；葡萄糖代謝後相當於低張液，有低血鈉風險者慎用。含磷，勿與含鈣製劑混合；高血鉀、腎衰竭、高血磷者慎用。';
+    else if (x.k.startsWith('d')) t = x.na ? '含鈉葡萄糖液：提供熱量並補充鈉。' : '葡萄糖水代謝後等同自由水，不適合作為復甦液，易造成低血鈉。';
+    return { main: ['總容量', f(v.vol, 0), 'mL'], rows, lv: 'info', interp: t };
+  },
+  formula: '含量 = 濃度（每 L）× 輸注量（L）\n熱量 = 葡萄糖 g × 3.4 kcal（含水葡萄糖）\n無電解質水比例 ≈ 1 − (Na + K) / 154',
+  extra: '<h3>常用輸液成分（mEq/L）</h3>' + fluidTable,
+  note: '「無電解質水比例」用來估算葡萄糖代謝後，這袋輸液相當於多少自由水，是判斷低血鈉風險的教學指標。各廠牌成分略有差異，以院內仿單為準。',
+  ref: '大塚製藥台大注射液仿單；臺中榮總常用靜脈輸液使用須知；Hoorn EJ. J Nephrol 2017;30:485 (maintenance fluids).'
+},
+{
+  id: 'k-replace', cat: '電解質/輸液', name: '補鉀（低血鉀）', en: 'Potassium replacement',
+  inputs: [{ id: 'k', label: '血鉀', unit: 'mEq/L', type: 'num' }, { id: 'route', label: '給藥途徑', type: 'sel', options: [['po', '口服'], ['pv', '周邊 IV'], ['cv', '中心靜脈']], def: 'pv' }, { id: 'renal', label: '腎功能不全 / 少尿', type: 'chk', pts: 1 }],
+  compute(v) {
+    if (!has(v, 'k')) return null;
+    if (v.k >= 3.5) return { main: ['血鉀', f(v.k, 1), 'mEq/L'], rows: [], lv: 'ok', interp: '血鉀 ≥ 3.5，一般不需補充（心臟病、毛地黃使用者常維持 ≥ 4.0）。' };
+    const def = (4.0 - v.k) / 0.3 * 100;
+    const sev = v.k < 2.5 ? '重度' : v.k < 3.0 ? '中度' : '輕度';
+    const rows = [['嚴重度', sev], ['粗估總體缺乏量', '約 ' + f(def, 0) + ' mEq（僅供參考）']];
+    if (v.route === 'po') rows.push(['口服建議', 'KCl 每日 40–100 mEq 分次給予']);
+    if (v.route === 'pv') rows.push(['最大速率', '≤ 10 mEq/h'], ['建議濃度', '周邊常見上限約 40 mEq/L（依院內規範）'], ['每 10 mEq 約需', '1 小時']);
+    if (v.route === 'cv') rows.push(['最大速率', '一般 ≤ 20 mEq/h（危急時更高需心電監測）'], ['每 20 mEq 約需', '1 小時']);
+    let t = v.k < 2.5 || v.route === 'cv' ? '重度低血鉀或高速率補充需持續心電監測，每 2–4 小時追蹤血鉀。' : '每補充約 10 mEq，血鉀約上升 0.1 mEq/L（個體差異大）。';
+    t += ' 同時檢查並矯正低血鎂，否則鉀難以補足。';
+    if (v.renal) t += ' 腎功能不全：減量（約一半）並縮短追蹤間隔。';
+    return { main: ['建議補充（首次）', v.k < 3.0 ? '40–60' : '20–40', 'mEq'], rows, lv: v.k < 2.5 ? 'bad' : 'warn', interp: t };
+  },
+  formula: '粗估缺乏量：血鉀每下降 0.3 mEq/L ≈ 總體缺乏 100 mEq\n周邊 IV ≤ 10 mEq/h；中心靜脈 ≤ 20 mEq/h\nKCl 注射液常見 2 mEq/mL（依院內規格）',
+  note: '鉀主要在細胞內，血鉀與總體缺乏量不呈線性；酸中毒、胰島素、β 致效劑會使鉀在細胞內外移動。KCl 絕不可 IV push。',
+  ref: 'Kardalas E, et al. Endocr Connect 2018;7:R135. Gennari FJ. NEJM 1998;339:451.'
+},
+{
+  id: 'na-replace', cat: '電解質/輸液', name: '補鈉（低血鈉 / 3% NaCl）', en: 'Hyponatremia correction',
+  inputs: [SEX, OLD, { id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'na', label: '血鈉', unit: 'mEq/L', type: 'num' }, { id: 'tg', label: '24 小時目標血鈉', unit: 'mEq/L', type: 'num', opt: true },
+    { id: 'sym', label: '症狀', type: 'list', options: [['0', '無症狀 / 輕微'], ['1', '中度（噁心、意識混亂、頭痛）'], ['2', '重度（嘔吐、抽搐、昏迷、呼吸窘迫）']], def: '0' },
+    { id: 'risk', label: 'ODS 高風險（Na ≤ 105、低血鉀、酒癮、營養不良、肝病）', type: 'chk', pts: 1 }],
+  compute(v) {
+    if (!has(v, 'w', 'na')) return null;
+    const tbw = v.w * TBWF(v);
+    const lim = v.risk ? 8 : 10;
+    const tg = v.tg ?? Math.min(v.na + (v.risk ? 6 : 8), 135);
+    const d3 = (513 - v.na) / (tbw + 1);
+    const vol3 = (tg - v.na) / d3 * 1000;
+    const def = tbw * (tg - v.na);
+    const rows = [['總體水 TBW', f(tbw) + ' L'], ['24 h 目標', f(tg, 0) + ' mEq/L（上升 ' + f(tg - v.na, 0) + '）'], ['鈉缺乏量（至目標）', f(def, 0) + ' mEq'], ['3% NaCl 每 1 L 升高', f(d3, 1) + ' mEq/L'], ['3% NaCl 估計量', f(Math.max(0, vol3), 0) + ' mL / 24 h']];
+    let lv = 'warn', t = `24 小時上升上限：${lim} mEq/L${v.risk ? '（高風險）' : ''}。`;
+    if (v.sym === '2') { lv = 'bad'; t = '重度症狀：3% NaCl 150 mL IV 20 分鐘，可重複 2 次（目標 1 小時內上升 5 mEq/L），每次後檢查血鈉。' + t; }
+    else if (v.sym === '1') t = '中度症狀：可給 3% NaCl 150 mL 單次，之後依病因治療。' + t;
+    else t = '無症狀者以病因治療為主（限水、停用藥物、補充等張液等），不一定需要 3% NaCl。' + t;
+    if (tg - v.na > lim) { lv = 'bad'; t = '⚠ 目標上升幅度超過安全上限！' + t; }
+    return { main: [v.sym === '0' ? '鈉缺乏量（至目標）' : '3% NaCl 估計量（24 h）', v.sym === '0' ? f(def, 0) : f(Math.max(0, vol3), 0), v.sym === '0' ? 'mEq' : 'mL'], rows, lv, interp: t + ' 估算未計入尿液排出，需每 2–6 小時追蹤；若出現大量稀釋尿（如低容積矯正後）血鈉可能急升。' };
+  },
+  formula: '鈉缺乏量 = TBW × (目標 Na − 目前 Na)\nΔNa（每 L 3% NaCl）= (513 − 血鈉) / (TBW + 1)\n24 h 上升上限：一般 ≤ 10；ODS 高風險 ≤ 8 mEq/L',
+  note: '過快矯正可導致滲透性去髓鞘症候群（ODS）。若超過上限，可考慮 D5W 或 desmopressin 回降。高血鈉請用「自由水缺乏量」。',
+  ref: 'Spasovski G, et al. Eur J Endocrinol 2014;170:G1. Verbalis JG, et al. Am J Med 2013;126:S1. Adrogué HJ, Madias NE. NEJM 2000;342:1581.'
+},
+{
+  id: 'ca-replace', cat: '電解質/輸液', name: '補鈣（低血鈣）', en: 'Calcium replacement',
+  inputs: [{ id: 'ca', label: '總血鈣', unit: 'mg/dL', type: 'num' }, { id: 'alb', label: '白蛋白', unit: 'g/dL', type: 'num', opt: true }, { id: 'ica', label: '游離鈣 iCa', unit: 'mmol/L', type: 'num', opt: true }, { id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'sym', label: '有症狀（抽搐、Trousseau / Chvostek、QT 延長、心律不整）', type: 'chk', pts: 1 }],
+  compute(v) {
+    if (!has(v, 'ca', 'w')) return null;
+    const cc = v.alb !== null ? v.ca + 0.8 * (4 - v.alb) : v.ca;
+    const severe = v.sym || cc < 7.5 || (v.ica !== null && v.ica < 0.8);
+    const lo = 0.5 * v.w, hi = 1.5 * v.w;
+    const rows = [['校正鈣', f(cc) + ' mg/dL'], ['10% Ca gluconate 10 mL', '= 1 g = 93 mg 元素鈣'], ['維持輸注（元素鈣）', f(lo, 0) + '–' + f(hi, 0) + ' mg/h'], ['＝ 10% Ca gluconate', f(lo / 9.3, 1) + '–' + f(hi / 9.3, 1) + ' mL/h']];
+    if (cc >= 8.5 && !(v.ica !== null && v.ica < 1.1)) return { main: ['校正鈣', f(cc), 'mg/dL'], rows: [], lv: 'ok', interp: '血鈣正常範圍，不需補充。' };
+    if (severe) return { main: ['立即給予', '1–2', 'g Ca gluconate'], rows, lv: 'bad', interp: '急性/症狀性低血鈣：10% Ca gluconate 10–20 mL（1–2 g）加入 50–100 mL D5W 輸注 10–20 分鐘，之後以 0.5–1.5 mg 元素鈣/kg/h 持續輸注，每 4–6 小時追蹤。' };
+    return { main: ['建議', '口服', '補充'], rows: [['口服元素鈣', '每日 1–2 g 分次'], ...rows.slice(0, 1)], lv: 'warn', interp: '輕度無症狀低血鈣：可口服鈣片，維生素 D 缺乏者合併補充；需找出病因（副甲狀腺、維生素 D、低血鎂、腎病）。' };
+  },
+  formula: '10% Ca gluconate：每 mL 含元素鈣 9.3 mg（10 mL = 93 mg）\n10% CaCl₂：每 mL 含元素鈣 27.3 mg（刺激性強，宜中心靜脈）\n維持：0.5–1.5 mg 元素鈣/kg/h',
+  note: '先矯正低血鎂。勿與碳酸氫鈉或含磷輸液（如台大三號、五號）同管路；使用毛地黃者補鈣需小心。',
+  ref: 'Cooper MS, Gittoes NJL. BMJ 2008;336:1298. Society for Endocrinology Emergency Guidance 2016.'
+},
+{
+  id: 'p-replace', cat: '電解質/輸液', name: '補磷（低血磷）', en: 'Phosphate replacement',
+  inputs: [{ id: 'p', label: '血磷', unit: 'mg/dL', type: 'num' }, { id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'k', label: '血鉀', unit: 'mEq/L', type: 'num', opt: true }, { id: 'renal', label: '腎功能不全（CrCl < 30）', type: 'chk', pts: 1 }],
+  compute(v) {
+    if (!has(v, 'p', 'w')) return null;
+    if (v.p >= 2.5) return { main: ['血磷', f(v.p, 1), 'mg/dL'], rows: [], lv: 'ok', interp: '血磷 ≥ 2.5 mg/dL，一般不需補充。' };
+    let dose, sev;
+    if (v.p >= 2.3) { dose = 0.16; sev = '輕度（2.3–2.5）'; } else if (v.p >= 1.6) { dose = 0.32; sev = '中度（1.6–2.2）'; } else { dose = 0.64; sev = '重度（< 1.6）'; }
+    let mmol = dose * v.w;
+    if (v.renal) mmol /= 2;
+    const hrs = Math.max(4, Math.ceil(mmol / 7.5));
+    const rows = [['嚴重度', sev], ['劑量係數', dose + ' mmol/kg' + (v.renal ? '（腎功能不全 × 50%）' : '')], ['建議輸注時間', (hrs >= 6 ? '≥ ' + hrs : hrs + '–6') + ' 小時（≤ 7.5 mmol/h）']];
+    if (v.k !== null) rows.push(['建議鹽類', v.k < 4 ? '磷酸鉀（每 mmol 約含 1.5 mEq K）' : '磷酸鈉 / Glycophos（鈉鹽）']);
+    if (v.k !== null && v.k < 4) rows.push(['同時給予鉀', '約 ' + f(mmol * 1.47, 0) + ' mEq']);
+    return { main: ['IV 磷補充', f(mmol, 1), 'mmol'], rows, lv: v.p < 1.6 ? 'bad' : 'warn', interp: (v.p >= 2.0 ? '無症狀且可進食者，口服補充即可。' : '') + ' 補充後 6–12 小時追蹤血磷、鈣、鉀、鎂。注意再餵食症候群（refeeding syndrome）。高劑量或快速輸注可能造成低血鈣與轉移性鈣化。' };
+  },
+  formula: 'Clark 1995 分級劑量（IV）\n2.3–2.5 mg/dL：0.16 mmol/kg\n1.6–2.2 mg/dL：0.32 mmol/kg\n< 1.6 mg/dL：0.64 mmol/kg\n輸注 4–6 小時；1 mmol 磷 = 31 mg 磷',
+  note: '肥胖者以調整體重計算。台大五號每 L 含磷 12 mmol，可作為維持期補充來源（非糖尿病人）。重症外傷病人有研究使用更高劑量（Brown 2006）。',
+  ref: 'Clark CL, et al. Crit Care Med 1995;23:1504. Brown KA, et al. JPEN 2006;30:209.'
+},
+{
+  id: 'albumin', cat: '輸血/白蛋白', name: '白蛋白補充', en: 'Albumin dosing',
+  inputs: [{ id: 'ind', label: '使用情境', type: 'list', options: [['lvp', '大量放腹水（LVP）'], ['sbp', '自發性細菌性腹膜炎（SBP）'], ['hrs', '肝腎症候群（HRS-AKI）'], ['est', '依目標濃度估算']], def: 'lvp' },
+    { id: 'w', label: '體重', unit: 'kg', type: 'num', opt: true }, { id: 'lv', label: '放腹水量', unit: 'L', type: 'num', opt: true }, { id: 'cur', label: '目前白蛋白', unit: 'g/dL', type: 'num', opt: true }, { id: 'tg', label: '目標白蛋白', unit: 'g/dL', type: 'num', opt: true }],
+  compute(v) {
+    const bottles = g => [['20% 50 mL（10 g）', f(g / 10, 1) + ' 瓶'], ['25% 50 mL（12.5 g）', f(g / 12.5, 1) + ' 瓶']];
+    if (v.ind === 'lvp') {
+      if (!has(v, 'lv')) return null;
+      if (v.lv <= 5) return { main: ['白蛋白', '可不需', ''], rows: [], lv: 'ok', interp: '放腹水 ≤ 5 L 一般不需白蛋白（AASLD 2021）；有 AKI 或 ACLF 者可個別考慮。' };
+      const lo = v.lv * 6, hi = v.lv * 8;
+      return { main: ['白蛋白', f(lo, 0) + '–' + f(hi, 0), 'g'], rows: bottles(hi), lv: 'info', interp: '放腹水 > 5 L：每放 1 L 給 6–8 g，於放腹水後給予，預防 paracentesis-induced circulatory dysfunction。' };
+    }
+    if (v.ind === 'sbp') {
+      if (!has(v, 'w')) return null;
+      return { main: ['第 1 天', f(1.5 * v.w, 0), 'g'], rows: [['第 3 天', f(v.w, 0) + ' g（1 g/kg）'], ...bottles(1.5 * v.w)], lv: 'info', interp: 'SBP 合併抗生素：診斷 6 小時內 1.5 g/kg，第 3 天 1 g/kg，可降低腎衰竭與死亡率（尤其 Cr > 1 或 Bil > 4）。' };
+    }
+    if (v.ind === 'hrs') {
+      if (!has(v, 'w')) return null;
+      const g = Math.min(100, v.w);
+      return { main: ['第 1–2 天', f(g, 0), 'g/day'], rows: [['之後', '20–40 g/day（合併血管收縮劑，如 terlipressin 或 norepinephrine）'], ...bottles(g)], lv: 'info', interp: 'AKI 時先停利尿劑，白蛋白 1 g/kg/day（上限 100 g）連續 2 天作容積擴張；無改善且符合 HRS-AKI 再加血管收縮劑。' };
+    }
+    if (!has(v, 'w', 'cur', 'tg')) return null;
+    const g = Math.max(0, (v.tg - v.cur) * 0.4 * v.w * 2);
+    return { main: ['估計需要量', f(g, 0), 'g'], rows: [['血漿容積', f(0.4 * v.w, 1) + ' dL（40 mL/kg）'], ...bottles(g)], lv: 'warn', interp: '依目標濃度補充白蛋白為理論估算；單純低白蛋白血症（營養不良）補充並無證據改善預後，應治療病因與營養支持。' };
+  },
+  formula: 'LVP（> 5 L）：6–8 g / 每 L 腹水\nSBP：1.5 g/kg（第 1 天）+ 1 g/kg（第 3 天）\nHRS-AKI：1 g/kg/day × 2 天（≤ 100 g）\n估算：(目標 − 目前) × 血漿容積(dL) × 2',
+  note: '健保給付有特定條件（如白蛋白 < 2.5 g/dL 合併肝硬化腹水、腎病症候群、燒燙傷；休克、開心手術等，且有每日上限），開立前請依最新健保規定與院內規範確認。',
+  ref: 'Biggins SW, et al. AASLD Guidance. Hepatology 2021;74:1014. Sort P, et al. NEJM 1999;341:403. EASL Cirrhosis Guidelines 2018.'
+},
+{
+  id: 'prbc', cat: '輸血/白蛋白', name: '紅血球輸注（pRBC）', en: 'Packed RBC transfusion',
+  inputs: [{ id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'hb', label: '目前 Hb', unit: 'g/dL', type: 'num' }, { id: 'tg', label: '目標 Hb', unit: 'g/dL', type: 'num' },
+    { id: 'ctx', label: '臨床情境', type: 'list', options: [['g', '一般住院 / 重症（血行動力穩定）'], ['c', '心臟手術 / 骨科手術 / 心血管疾病'], ['a', '急性冠心症'], ['b', '活動性出血']], def: 'g' }],
+  compute(v) {
+    if (!has(v, 'w', 'hb', 'tg')) return null;
+    const d = v.tg - v.hb;
+    const thr = { g: 'Hb < 7 g/dL（限制性策略）', c: 'Hb < 7.5（心臟手術）/ < 8 g/dL（骨科、心血管疾病）', a: '證據不一；MINT 試驗支持較寬鬆策略（Hb < 10）', b: '依失血速度與血行動力判斷，不以 Hb 為唯一依據' }[v.ctx];
+    if (d <= 0) return { main: ['需要量', '0', 'mL'], rows: [['建議輸血閾值', thr]], lv: 'ok', interp: '目前 Hb 已達目標。' };
+    const vol = v.w * d * 4, units = d * v.w / 35;
+    const below = v.ctx === 'g' ? v.hb < 7 : v.ctx === 'c' ? v.hb < 8 : true;
+    return { main: ['估計輸注量', f(vol, 0), 'mL'], rows: [['約台灣單位數', f(units, 1) + ' U'], ['建議輸血閾值', thr]], lv: below ? 'warn' : 'info', interp: (below ? '' : '目前 Hb 高於常用輸血閾值，請確認適應症。') + ' 台灣 1 U 紅血球源自 250 mL 全血（約 110–195 mL），成人每 1 U 約升 Hb 0.5 g/dL；2 U 約等於國外 1 unit。非出血病人建議一次一袋（2 U）後重新評估。' };
+  },
+  formula: '輸注量（mL）≈ 體重 × ΔHb × 4（pRBC Hct 約 60%）\n台灣單位 ≈ ΔHb × 體重 / 35（成人 70 kg 每 U 升約 0.5 g/dL）\n兒科：10–15 mL/kg 約升 Hb 2–3 g/dL',
+  note: '輸血速度一般每單位 4 小時內輸畢；心衰竭病人減慢並考慮利尿劑，注意 TACO。',
+  ref: 'Carson JL, et al. AABB International Guidelines. JAMA 2023;330:1892. 台北榮總輸血醫學科血品說明；台灣血液基金會《血液成分精要》。'
+},
+{
+  id: 'plt', cat: '輸血/白蛋白', name: '血小板輸注與 CCI', en: 'Platelet transfusion / Corrected Count Increment',
+  inputs: [{ id: 'w', label: '體重', unit: 'kg', type: 'num' }, { id: 'h', label: '身高', unit: 'cm', type: 'num' }, { id: 'pre', label: '輸注前血小板', unit: '×10³/µL', type: 'num' },
+    { id: 'prod', label: '血品', type: 'sel', options: [['pc', '血小板濃厚液（PC）'], ['ph', '分離術血小板（PH）']], def: 'pc' }, { id: 'n', label: '單位數 / 袋數', unit: 'U', type: 'num', def: '12' }, { id: 'post', label: '輸注後 1 小時血小板', unit: '×10³/µL', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'w', 'h', 'pre', 'n')) return null;
+    const dose = v.prod === 'pc' ? v.n * 0.275 : v.n * 3; // ×10^11
+    const bsa = Math.sqrt(v.h * v.w / 3600);
+    const inc = dose * 1e11 * 0.67 / (v.w * 70 * 1000) / 1000; // ×10³/µL
+    const rows = [['輸注血小板總數', f(dose, 2) + ' × 10¹¹'], ['BSA', f(bsa, 2) + ' m²'], ['預期上升', '約 ' + f(inc, 0) + ' × 10³/µL'], ['預期輸注後', '約 ' + f(v.pre + inc, 0) + ' × 10³/µL']];
+    let lv = 'info', t = '常用輸注閾值：預防性 < 10（AABB）或 < 20 × 10³/µL（台灣多數院內規範）；放置中心靜脈導管 < 20；腰椎穿刺、重大非神經手術 < 50；神經外科或眼部手術 < 100 × 10³/µL。';
+    if (v.post !== null) {
+      const cci = (v.post - v.pre) * 1000 * bsa / dose;
+      rows.push(['CCI（1 小時）', f(cci, 0)]);
+      if (cci < 7500) { lv = 'bad'; t = 'CCI < 7,500：輸注反應不佳。連續兩次不佳需考慮血小板輸注無效（refractoriness）；1 小時 CCI 低多為免疫性（HLA 抗體），24 小時才下降多為非免疫性（發燒、敗血症、脾腫大、DIC、藥物）。'; }
+      else { lv = 'ok'; t = 'CCI ≥ 7,500：輸注反應適當。'; }
+    }
+    return { main: ['預期上升', f(inc, 0), '×10³/µL'], rows, lv, interp: t };
+  },
+  formula: '預期上升 = 血小板數 × 0.67（脾臟留存） / 血量\nCCI = (輸後 − 輸前)/µL × BSA(m²) / 輸入血小板數(×10¹¹)\nPC 每 U ≥ 2.75 × 10¹⁰；PH 每袋約 3 × 10¹¹（相當 8–12 U PC）',
+  note: '以最低規格估算，實際含量常較高。成人常用劑量：PC 10–12 U 或 PH 1 袋。TTP、HIT 一般避免預防性輸注血小板。',
+  ref: 'Kaufman RM, et al. AABB Guideline. Ann Intern Med 2015;162:205. Metcalf RA, et al. AABB 2025 Platelet Transfusion Guidelines. 台北榮總輸血醫學科血品說明。'
+}
+);
+
+// ---------- 評分 ----------
+const NIH = (id, label, opts) => ({ id, label, type: 'list', options: opts.map((t, i) => [String(i), `${i}：${t}`]), def: '0' });
+CALCS.push(
+{
+  id: 'nihss', cat: '神經', name: 'NIHSS 中風量表', en: 'NIH Stroke Scale', score: true,
+  inputs: [
+    NIH('a1', '1a 意識程度', ['清醒', '嗜睡，輕刺激可喚醒', '需重複或疼痛刺激才有反應', '僅反射動作或完全無反應']),
+    NIH('a2', '1b 意識問題（月份、年齡）', ['兩題皆對', '答對一題', '皆錯']),
+    NIH('a3', '1c 意識指令（睜閉眼、握放手）', ['兩項皆做到', '做到一項', '皆未做到']),
+    NIH('a4', '2 凝視', ['正常', '部分凝視麻痺', '強迫性偏斜或完全凝視麻痺']),
+    NIH('a5', '3 視野', ['無視野缺損', '部分偏盲', '完全偏盲', '雙側偏盲（含皮質盲）']),
+    NIH('a6', '4 顏面麻痺', ['正常', '輕微（鼻唇溝變平）', '部分（下半臉完全或近完全麻痺）', '完全（單或雙側上下臉）']),
+    NIH('a7', '5a 左上肢運動', ['無下垂（10 秒）', '下垂但未碰床', '有些抗重力，碰床', '無法抗重力', '完全無動作']),
+    NIH('a8', '5b 右上肢運動', ['無下垂（10 秒）', '下垂但未碰床', '有些抗重力，碰床', '無法抗重力', '完全無動作']),
+    NIH('a9', '6a 左下肢運動', ['無下垂（5 秒）', '下垂但未碰床', '有些抗重力，碰床', '無法抗重力', '完全無動作']),
+    NIH('a10', '6b 右下肢運動', ['無下垂（5 秒）', '下垂但未碰床', '有些抗重力，碰床', '無法抗重力', '完全無動作']),
+    NIH('a11', '7 肢體協調（運動失調）', ['無', '一肢', '兩肢']),
+    NIH('a12', '8 感覺', ['正常', '輕至中度感覺喪失', '重度至完全感覺喪失']),
+    NIH('a13', '9 語言（失語）', ['正常', '輕至中度失語', '重度失語', '完全失語 / 無法言語']),
+    NIH('a14', '10 構音障礙', ['正常', '輕至中度', '重度（無法理解或無法發聲）']),
+    NIH('a15', '11 忽略（Extinction / Inattention）', ['無', '單一感覺模式忽略', '重度或多模式忽略'])],
+  compute(v) {
+    const s = sum(v, Array.from({ length: 15 }, (_, i) => 'a' + (i + 1)));
+    let lv = 'ok', t = '0：無中風症狀';
+    if (s >= 21) { lv = 'bad'; t = '21–42：重度中風'; } else if (s >= 16) { lv = 'bad'; t = '16–20：中重度中風'; } else if (s >= 5) { lv = 'warn'; t = '5–15：中度中風'; } else if (s >= 1) { lv = 'warn'; t = '1–4：輕度中風'; }
+    return { main: ['NIHSS', String(s), '分'], rows: [], lv, interp: t + '。NIHSS 不能單獨決定是否給血栓溶解劑；輕度但具失能症狀（如失語、偏盲）仍應考慮治療。大血管阻塞常見 NIHSS ≥ 6。' };
+  },
+  formula: '15 項，總分 0–42\n截肢或關節融合無法測試的肢體記為 UN（此處以 0 計）',
+  note: '依「第一次反應」評分，不要回頭修改；不要教病人。',
+  ref: 'Brott T, et al. Stroke 1989;20:864. Powers WJ, et al. AHA/ASA Guidelines. Stroke 2019;50:e344.'
+},
+{
+  id: 'sofa', cat: '感染/急重症', name: 'SOFA（原版）', en: 'Sequential Organ Failure Assessment (1996)', score: true,
+  inputs: [{ id: 'pf', label: 'PaO₂/FiO₂', unit: 'mmHg', type: 'num' }, { id: 'vent', label: '使用呼吸器支持', type: 'chk', pts: 1 }, { id: 'plt', label: '血小板', unit: '×10³/µL', type: 'num' }, { id: 'bil', label: '總膽紅素', unit: 'mg/dL', type: 'num' },
+    { id: 'cv', label: '心血管', type: 'list', options: [['0', 'MAP ≥ 70'], ['1', 'MAP < 70'], ['2', 'Dopamine ≤ 5 或任何 Dobutamine'], ['3', 'Dopamine > 5 或 Epi / NE ≤ 0.1 mcg/kg/min'], ['4', 'Dopamine > 15 或 Epi / NE > 0.1 mcg/kg/min']], def: '0' },
+    { id: 'gcs', label: 'GCS', unit: '', type: 'num', def: '15' }, { id: 'cr', label: 'Creatinine', unit: 'mg/dL', type: 'num' }, { id: 'uo', label: '尿量', unit: 'mL/day', type: 'num', opt: true }],
+  compute(v) {
+    if (!has(v, 'pf', 'plt', 'bil', 'gcs', 'cr')) return null;
+    const r = v.pf < 100 && v.vent ? 4 : v.pf < 200 && v.vent ? 3 : v.pf < 300 ? 2 : v.pf < 400 ? 1 : 0;
+    const c = v.plt < 20 ? 4 : v.plt < 50 ? 3 : v.plt < 100 ? 2 : v.plt < 150 ? 1 : 0;
+    const l = v.bil >= 12 ? 4 : v.bil >= 6 ? 3 : v.bil >= 2 ? 2 : v.bil >= 1.2 ? 1 : 0;
+    const cv = Number(v.cv);
+    const n = v.gcs < 6 ? 4 : v.gcs <= 9 ? 3 : v.gcs <= 12 ? 2 : v.gcs <= 14 ? 1 : 0;
+    let k = v.cr >= 5 ? 4 : v.cr >= 3.5 ? 3 : v.cr >= 2 ? 2 : v.cr >= 1.2 ? 1 : 0;
+    if (v.uo !== null) k = Math.max(k, v.uo < 200 ? 4 : v.uo < 500 ? 3 : 0);
+    const s = r + c + l + cv + n + k;
+    return { main: ['SOFA', String(s), '分'], rows: [['呼吸', r], ['凝血', c], ['肝臟', l], ['心血管', cv], ['中樞神經', n], ['腎臟', k]], lv: s >= 2 ? 'warn' : 'ok', interp: 'Sepsis-3：疑似感染且 SOFA 較基準上升 ≥ 2 分即符合敗血症定義（院內死亡率約 10% 以上）。' };
+  },
+  formula: '6 個器官系統各 0–4 分，總分 0–24\n呼吸 3–4 分需有呼吸器支持',
+  note: '2025 年已發表 SOFA-2（見下一項），Sepsis-3 定義目前仍以原版 SOFA 為基礎。',
+  ref: 'Vincent JL, et al. Intensive Care Med 1996;22:707. Singer M, et al. JAMA 2016;315:801.'
+},
+{
+  id: 'sofa2', cat: '感染/急重症', name: 'SOFA-2（2025 簡化版）', en: 'SOFA-2 score', score: true,
+  inputs: [
+    { id: 'b', label: '腦（Brain）', type: 'list', options: [['0', '0：GCS 15'], ['1', '1：GCS 13–14 或需藥物治療的譫妄'], ['2', '2：GCS 9–12'], ['3', '3：GCS 6–8'], ['4', '4：GCS 3–5']], def: '0' },
+    { id: 'r', label: '呼吸（P/F ratio）', type: 'list', options: [['0', '0：> 300'], ['1', '1：≤ 300'], ['2', '2：≤ 225'], ['3', '3：≤ 150 且使用呼吸支持*'], ['4', '4：≤ 75 且呼吸支持，或使用 ECMO']], def: '0' },
+    { id: 'c', label: '心血管', type: 'list', options: [['0', '0：MAP ≥ 70，無升壓劑'], ['1', '1：MAP < 70'], ['2', '2：低劑量升壓劑（NE + Epi ≤ 0.2 mcg/kg/min）'], ['3', '3：中劑量（NE + Epi 0.2–0.4）'], ['4', '4：高劑量（> 0.4）或機械循環支持']], def: '0' },
+    { id: 'l', label: '肝臟（膽紅素 mg/dL）', type: 'list', options: [['0', '0：≤ 1.2'], ['1', '1：≤ 3.0'], ['2', '2：≤ 6.0'], ['3', '3：≤ 12.0'], ['4', '4：> 12.0']], def: '0' },
+    { id: 'k', label: '腎臟', type: 'list', options: [['0', '0：Cr ≤ 1.2'], ['1', '1：Cr ≤ 2.0 或尿量 < 0.5 mL/kg/h 6–12 h'], ['2', '2：Cr ≤ 3.5 或尿量 < 0.5 mL/kg/h ≥ 12 h'], ['3', '3：Cr > 3.5 或尿量 < 0.3 mL/kg/h ≥ 24 h 或無尿 ≥ 12 h'], ['4', '4：接受或符合腎臟替代治療']], def: '0' },
+    { id: 'h', label: '止血（血小板 ×10³/µL）', type: 'list', options: [['0', '0：> 150'], ['1', '1：≤ 150'], ['2', '2：≤ 100'], ['3', '3：≤ 80'], ['4', '4：≤ 50']], def: '0' }],
+  compute(v) {
+    const s = sum(v, ['b', 'r', 'c', 'l', 'k', 'h']);
+    return { main: ['SOFA-2', String(s), '分'], rows: [], lv: s >= 8 ? 'bad' : s >= 2 ? 'warn' : 'ok', interp: '總分 0–24，分數越高 ICU 死亡率越高。*呼吸支持包含 HFNC、CPAP、BiPAP 與侵入性呼吸器。' };
+  },
+  formula: '6 個器官系統（腦、呼吸、心血管、肝、腎、止血）各 0–4 分',
+  note: '此為簡化版；完整版含更細的升壓劑組合、其他血管活性藥物與替代指標（如無血氧分析時用 SpO₂/FiO₂），臨床研究使用請參照原文。',
+  ref: 'Ranzani OT, et al. JAMA 2025;334(23):2090–2103. Moreno R, et al. JAMA Netw Open 2025;8(10):e2545040.'
+},
+{
+  id: 'apache2', cat: '感染/急重症', name: 'APACHE II', en: 'Acute Physiology and Chronic Health Evaluation II', score: true,
+  inputs: [{ id: 'age', label: '年齡', unit: '歲', type: 'num' }, { id: 't', label: '體溫（肛溫）', unit: '°C', type: 'num' }, { id: 'map', label: 'MAP', unit: 'mmHg', type: 'num' }, { id: 'hr', label: '心跳', unit: 'bpm', type: 'num' }, { id: 'rr', label: '呼吸速率', unit: '次/分', type: 'num' },
+    { id: 'fio2', label: 'FiO₂', unit: '%', type: 'num', def: '21' }, { id: 'pao2', label: 'PaO₂', unit: 'mmHg', type: 'num' }, { id: 'paco2', label: 'PaCO₂（FiO₂ ≥ 50% 時需要）', unit: 'mmHg', type: 'num', opt: true }, { id: 'ph', label: '動脈 pH', unit: '', type: 'num' },
+    { id: 'na', label: 'Na', unit: 'mEq/L', type: 'num' }, { id: 'k', label: 'K', unit: 'mEq/L', type: 'num' }, { id: 'cr', label: 'Creatinine', unit: 'mg/dL', type: 'num' }, { id: 'arf', label: '急性腎衰竭（Cr 分數加倍）', type: 'chk', pts: 1 },
+    { id: 'hct', label: 'Hct', unit: '%', type: 'num' }, { id: 'wbc', label: 'WBC', unit: '×10³/µL', type: 'num' }, { id: 'gcs', label: 'GCS', unit: '', type: 'num', def: '15' },
+    { id: 'chr', label: '慢性健康狀況（嚴重器官功能不全或免疫低下）', type: 'list', options: [['0', '無'], ['2', '有，且為擇期手術後'], ['5', '有，且為非手術或緊急手術後']], def: '0' }],
+  compute(v) {
+    if (!has(v, 'age', 't', 'map', 'hr', 'rr', 'fio2', 'pao2', 'ph', 'na', 'k', 'cr', 'hct', 'wbc', 'gcs')) return null;
+    const x = v;
+    const T = x.t >= 41 ? 4 : x.t >= 39 ? 3 : x.t >= 38.5 ? 1 : x.t >= 36 ? 0 : x.t >= 34 ? 1 : x.t >= 32 ? 2 : x.t >= 30 ? 3 : 4;
+    const M = x.map >= 160 ? 4 : x.map >= 130 ? 3 : x.map >= 110 ? 2 : x.map >= 70 ? 0 : x.map >= 50 ? 2 : 4;
+    const H = x.hr >= 180 ? 4 : x.hr >= 140 ? 3 : x.hr >= 110 ? 2 : x.hr >= 70 ? 0 : x.hr >= 55 ? 2 : x.hr >= 40 ? 3 : 4;
+    const R = x.rr >= 50 ? 4 : x.rr >= 35 ? 3 : x.rr >= 25 ? 1 : x.rr >= 12 ? 0 : x.rr >= 10 ? 1 : x.rr >= 6 ? 2 : 4;
+    let O;
+    if (x.fio2 >= 50) {
+      if (x.paco2 === null) return null;
+      const aa = x.fio2 / 100 * 713 - x.paco2 / 0.8 - x.pao2;
+      O = aa >= 500 ? 4 : aa >= 350 ? 3 : aa >= 200 ? 2 : 0;
+    } else O = x.pao2 > 70 ? 0 : x.pao2 >= 61 ? 1 : x.pao2 >= 55 ? 3 : 4;
+    const P = x.ph >= 7.7 ? 4 : x.ph >= 7.6 ? 3 : x.ph >= 7.5 ? 1 : x.ph >= 7.33 ? 0 : x.ph >= 7.25 ? 2 : x.ph >= 7.15 ? 3 : 4;
+    const N = x.na >= 180 ? 4 : x.na >= 160 ? 3 : x.na >= 155 ? 2 : x.na >= 150 ? 1 : x.na >= 130 ? 0 : x.na >= 120 ? 2 : x.na >= 111 ? 3 : 4;
+    const K = x.k >= 7 ? 4 : x.k >= 6 ? 3 : x.k >= 5.5 ? 1 : x.k >= 3.5 ? 0 : x.k >= 3 ? 1 : x.k >= 2.5 ? 2 : 4;
+    const C = (x.cr >= 3.5 ? 4 : x.cr >= 2 ? 3 : x.cr >= 1.5 ? 2 : x.cr >= 0.6 ? 0 : 2) * (x.arf ? 2 : 1);
+    const Hc = x.hct >= 60 ? 4 : x.hct >= 50 ? 2 : x.hct >= 46 ? 1 : x.hct >= 30 ? 0 : x.hct >= 20 ? 2 : 4;
+    const W = x.wbc >= 40 ? 4 : x.wbc >= 20 ? 2 : x.wbc >= 15 ? 1 : x.wbc >= 3 ? 0 : x.wbc >= 1 ? 2 : 4;
+    const G = 15 - x.gcs;
+    const aps = T + M + H + R + O + P + N + K + C + Hc + W + G;
+    const A = x.age <= 44 ? 0 : x.age <= 54 ? 2 : x.age <= 64 ? 3 : x.age <= 74 ? 5 : 6;
+    const s = aps + A + Number(x.chr);
+    const mort = s <= 4 ? '約 4%' : s <= 9 ? '約 8%' : s <= 14 ? '約 15%' : s <= 19 ? '約 25%' : s <= 24 ? '約 40%' : s <= 29 ? '約 55%' : s <= 34 ? '約 75%' : '約 85%';
+    return { main: ['APACHE II', String(s), '分'], rows: [['急性生理分數 APS', aps], ['年齡分數', A], ['慢性健康分數', x.chr], ['院內死亡率（非手術，參考）', mort]], lv: s >= 25 ? 'bad' : s >= 15 ? 'warn' : 'ok', interp: '取入 ICU 後 24 小時內最差值。死亡率對應為粗略參考，正式預測需加入診斷類別權重。' };
+  },
+  formula: 'APACHE II = 急性生理分數（12 項）+ 年齡分數 + 慢性健康分數\nFiO₂ ≥ 50% 用 A-a gradient；< 50% 用 PaO₂\nGCS 分數 = 15 − GCS',
+  note: '「慢性健康」：入院前已有肝硬化（切片證實 + 門脈高壓）、NYHA IV 心衰竭、重度 COPD / 慢性缺氧、長期透析或免疫低下。',
+  ref: 'Knaus WA, et al. Crit Care Med 1985;13:818.'
+},
+{
+  id: 'psi', cat: '感染/急重症', name: 'PSI / PORT 肺炎嚴重度', en: 'Pneumonia Severity Index', score: true,
+  inputs: [{ id: 'age', label: '年齡', unit: '歲', type: 'num' }, { id: 'sex', label: '性別', type: 'sel', options: [['M', '男'], ['F', '女（−10）']], def: 'M' }, { id: 'nh', label: '安養機構住民', type: 'chk', pts: 10 },
+    { id: 'ca', label: '惡性腫瘤', type: 'chk', pts: 30 }, { id: 'liv', label: '肝病', type: 'chk', pts: 20 }, { id: 'chf', label: '充血性心衰竭', type: 'chk', pts: 10 }, { id: 'cva', label: '腦血管疾病', type: 'chk', pts: 10 }, { id: 'ren', label: '腎病', type: 'chk', pts: 10 },
+    { id: 'ams', label: '意識改變', type: 'chk', pts: 20 }, { id: 'rr', label: '呼吸 ≥ 30 次/分', type: 'chk', pts: 20 }, { id: 'sbp', label: '收縮壓 < 90 mmHg', type: 'chk', pts: 20 }, { id: 'tmp', label: '體溫 < 35 或 ≥ 40 °C', type: 'chk', pts: 15 }, { id: 'pr', label: '心跳 ≥ 125', type: 'chk', pts: 10 },
+    { id: 'ph', label: '動脈 pH < 7.35', type: 'chk', pts: 30 }, { id: 'bun', label: 'BUN ≥ 30 mg/dL', type: 'chk', pts: 20 }, { id: 'na', label: 'Na < 130', type: 'chk', pts: 20 }, { id: 'glu', label: '血糖 ≥ 250 mg/dL', type: 'chk', pts: 10 }, { id: 'hct', label: 'Hct < 30%', type: 'chk', pts: 10 }, { id: 'ox', label: 'PaO₂ < 60 或 SpO₂ < 90%', type: 'chk', pts: 10 }, { id: 'pe', label: '肋膜積水', type: 'chk', pts: 10 }],
+  compute(v) {
+    if (!has(v, 'age')) return null;
+    const keys = ['nh', 'ca', 'liv', 'chf', 'cva', 'ren', 'ams', 'rr', 'sbp', 'tmp', 'pr', 'ph', 'bun', 'na', 'glu', 'hct', 'ox', 'pe'];
+    const s = v.age + (v.sex === 'F' ? -10 : 0) + sum(v, keys);
+    const noRisk = v.age <= 50 && !sum(v, ['nh', 'ca', 'liv', 'chf', 'cva', 'ren', 'ams', 'rr', 'sbp', 'tmp', 'pr']);
+    let cls, mort, rec, lv;
+    if (noRisk) { cls = 'I'; mort = '0.1%'; rec = '門診治療'; lv = 'ok'; }
+    else if (s <= 70) { cls = 'II'; mort = '0.6%'; rec = '門診治療'; lv = 'ok'; }
+    else if (s <= 90) { cls = 'III'; mort = '0.9–2.8%'; rec = '門診或短期住院觀察'; lv = 'warn'; }
+    else if (s <= 130) { cls = 'IV'; mort = '8.2–9.3%'; rec = '住院'; lv = 'bad'; }
+    else { cls = 'V'; mort = '27–31%'; rec = '住院，評估加護病房'; lv = 'bad'; }
+    return { main: ['PSI Class', cls, `（${noRisk ? '依第一步判定' : s + ' 分'}）`], rows: [['30 天死亡率', mort], ['建議', rec]], lv, interp: 'Class I：年齡 ≤ 50、無共病且無生命徵象/意識異常者，不需抽血即可判定。仍需考量社會因素、低血氧、無法口服等。' };
+  },
+  formula: '年齡（女性 −10）+ 各項加分\nI：第一步判定｜II ≤ 70｜III 71–90｜IV 91–130｜V > 130',
+  note: 'ATS/IDSA 2019 社區型肺炎指引建議以 PSI（優於 CURB-65）輔助決定門診或住院。',
+  ref: 'Fine MJ, et al. NEJM 1997;336:243. Metlay JP, et al. Am J Respir Crit Care Med 2019;200:e45.'
+}
+);
+
+// ---------- 藥物輸注 ----------
+const DRUGS = {
+  ne: ['Norepinephrine', 'mcg/kg/min', '0.1', '8', 'mg', '250', '0.01–0.5 mcg/kg/min（難治性休克可更高）'],
+  epi: ['Epinephrine', 'mcg/kg/min', '0.05', '4', 'mg', '250', '0.01–0.5 mcg/kg/min'],
+  dopa: ['Dopamine', 'mcg/kg/min', '5', '400', 'mg', '250', '2–20 mcg/kg/min'],
+  dobu: ['Dobutamine', 'mcg/kg/min', '5', '500', 'mg', '250', '2–20 mcg/kg/min'],
+  vaso: ['Vasopressin', 'U/min', '0.03', '20', 'U', '100', '0.03（–0.04）U/min，敗血性休克加成用'],
+  mil: ['Milrinone', 'mcg/kg/min', '0.375', '20', 'mg', '100', '0.125–0.75 mcg/kg/min，腎功能不全需減量'],
+  ntg: ['Nitroglycerin', 'mcg/min', '10', '50', 'mg', '250', '5–200 mcg/min，每 3–5 分鐘調升'],
+  nica: ['Nicardipine', 'mg/h', '5', '20', 'mg', '200', '5–15 mg/h，每 5–15 分鐘調升 2.5 mg/h'],
+  esm: ['Esmolol', 'mcg/kg/min', '50', '2500', 'mg', '250', '50–300 mcg/kg/min（可先 500 mcg/kg 負荷）'],
+  amio: ['Amiodarone', 'mg/min', '1', '900', 'mg', '500', '負荷 150 mg / 10 分鐘，1 mg/min × 6 h，再 0.5 mg/min × 18 h'],
+  hep: ['Heparin', 'U/kg/h', '18', '25000', 'U', '250', 'VTE：80 U/kg bolus + 18 U/kg/h；ACS：60 U/kg（≤ 4000）+ 12 U/kg/h（≤ 1000 U/h），依 aPTT / anti-Xa 調整'],
+  ins: ['Regular insulin', 'U/kg/h', '0.1', '50', 'U', '50', 'DKA/HHS：0.1 U/kg/h（或 0.14 U/kg/h 不給 bolus）'],
+  prop: ['Propofol', 'mcg/kg/min', '20', '1000', 'mg', '100', '5–50 mcg/kg/min；注意 PRIS、三酸甘油酯'],
+  dex: ['Dexmedetomidine', 'mcg/kg/h', '0.4', '200', 'mcg', '50', '0.2–0.7 mcg/kg/h（歐盟仿單上限 1.4）'],
+  mida: ['Midazolam', 'mg/h', '2', '50', 'mg', '50', '0.02–0.1 mg/kg/h'],
+  fent: ['Fentanyl', 'mcg/h', '50', '500', 'mcg', '50', '25–200 mcg/h（0.7–10 mcg/kg/h）'],
+  cus: ['自訂藥物', 'mcg/kg/min', '', '', 'mg', '', '']
+};
+const DOSE_UNITS = ['mcg/kg/min', 'mcg/kg/h', 'mcg/min', 'mcg/h', 'mg/kg/h', 'mg/h', 'mg/min', 'U/kg/h', 'U/h', 'U/min'];
+CALCS.push(
+{
+  id: 'infusion', cat: '藥物/抗生素', name: '藥物劑量計算（連續輸注）', en: 'Infusion rate calculator (dose ↔ mL/h)',
+  inputs: [
+    { id: 'drug', label: '藥物', type: 'list', options: Object.entries(DRUGS).map(([k, d]) => [k, d[0]]), def: 'ne',
+      apply(v, k) { const d = DRUGS[k]; v.du = d[1]; v.dose = d[2]; v.amt = d[3]; v.au = d[4]; v.vol = d[5]; } },
+    { id: 'w', label: '體重', unit: 'kg', type: 'num' },
+    { id: 'du', label: '劑量單位', type: 'list', options: DOSE_UNITS.map(u => [u, u]), def: 'mcg/kg/min' },
+    { id: 'dose', label: '目標劑量', unit: v => v.du, type: 'num', def: '0.1' },
+    { id: 'amt', label: '藥量（泡製）', unit: v => v.au, type: 'num', def: '8' },
+    { id: 'au', label: '藥量單位', type: 'sel', options: [['mg', 'mg'], ['mcg', 'mcg'], ['U', 'U']], def: 'mg' },
+    { id: 'vol', label: '稀釋總體積', unit: 'mL', type: 'num', def: '250' }],
+  compute(v) {
+    if (!has(v, 'dose', 'amt', 'vol') || !v.amt || !v.vol) return null;
+    const [mass, ...rest] = v.du.split('/');
+    const perKg = rest.includes('kg'), perMin = rest.includes('min');
+    if (perKg && !has(v, 'w')) return null;
+    if ((mass === 'U') !== (v.au === 'U')) return { main: ['單位不符', '—', ''], rows: [], lv: 'warn', interp: '劑量單位與藥量單位不一致（U 與 mg/mcg 無法換算）。' };
+    const toMass = { mg: { mg: 1, mcg: 0.001 }, mcg: { mg: 1000, mcg: 1 }, U: { U: 1 } }[mass][v.au];
+    const conc = v.amt * toMass / v.vol; // mass per mL
+    const factor = (perKg ? v.w : 1) * (perMin ? 60 : 1);
+    const rate = v.dose * factor / conc;
+    const per1 = conc / factor;
+    const d = DRUGS[v.drug];
+    const rows = [['濃度', `${+(v.amt / v.vol).toPrecision(3)} ${v.au}/mL`], ['1 mL/h 相當於', `${+per1.toPrecision(3)} ${v.du}`], ['每小時藥量', `${+(rate * v.amt / v.vol).toPrecision(3)} ${v.au}/h`]];
+    if (d[6]) rows.push(['常用範圍', d[6]]);
+    return { main: ['輸注速率', +rate.toPrecision(3), 'mL/h'], rows, lv: 'info', interp: '反向換算：目前速率（mL/h）×「1 mL/h 相當於」即為劑量。泡製濃度請依院內標準調整。' };
+  },
+  formula: '速率（mL/h）= 劑量 ×［體重］×［60（若為 /min）］÷ 濃度\n濃度 = 藥量 ÷ 稀釋總體積',
+  note: '預設泡製濃度僅為常見範例，各院不同。高警訊藥品（升壓劑、胰島素、heparin）需雙人核對。',
+  ref: '各藥品仿單；Surviving Sepsis Campaign 2021；ADA Hyperglycemic Crises Consensus 2024；SCCM PADIS Guideline 2018。'
+},
+{ id: 'abx', cat: '藥物/抗生素', name: '抗生素劑量表（含腎功能調整）', en: 'Antimicrobial dosing table', custom: true }
+);
+
+// ======================= 抗生素劑量表 =======================
+// r: [[CrCl 下限, 劑量]]，由高到低；取第一個 CrCl ≥ 下限者
+const NA = [[0, '不需調整']];
+const ABX = [
+  // Penicillins
+  { n: 'Penicillin G', c: 'Penicillin', sp: '鏈球菌、梅毒、Neisseria meningitidis、Clostridium（非 B. fragilis）', d: '2–4 MU IV q4h（神經梅毒 18–24 MU/day）', r: [[50, '不需調整'], [10, '75% 劑量'], [0, '20–50% 劑量']], hd: '依 CrCl < 10 劑量，透析後補充' },
+  { n: 'Ampicillin', c: 'Penicillin', sp: '腸球菌（E. faecalis）、Listeria、鏈球菌、部分 E. coli', d: '1–2 g IV q4–6h（腦膜炎 / 心內膜炎 2 g q4h）', r: [[50, 'q4–6h'], [10, 'q6–12h'], [0, 'q12–24h']], hd: 'q12–24h，透析後給' },
+  { n: 'Oxacillin', c: 'Penicillin', sp: 'MSSA、鏈球菌', d: '1–2 g IV q4h（嚴重 MSSA 感染 2 g q4h）', r: NA, hd: '不需調整' },
+  { n: 'Amoxicillin', c: 'Penicillin', sp: '鏈球菌、肺炎鏈球菌、H. influenzae（β-lactamase 陰性）', d: '500 mg PO q8h 或 875 mg q12h（高劑量 1 g q8h）', r: [[30, '不需調整'], [10, '250–500 mg q12h'], [0, '250–500 mg q24h']], hd: '250–500 mg q24h，透析後給' },
+  { n: 'Amoxicillin / Clavulanate', c: 'β-lactam / BLI', sp: '同 amoxicillin + MSSA、H. influenzae、M. catarrhalis、厭氧菌', d: '875/125 mg PO q12h 或 500/125 mg q8h', r: [[30, '不需調整'], [10, '500/125 mg q12h（避免 875 mg）'], [0, '500/125 mg q24h']], hd: '500/125 mg q24h，透析中及後各補一劑' },
+  { n: 'Ampicillin / Sulbactam', c: 'β-lactam / BLI', sp: 'MSSA、腸球菌、厭氧菌、部分 GNB；高劑量 sulbactam 用於 A. baumannii', d: '1.5–3 g IV q6h（A. baumannii：sulbactam 6–9 g/day）', r: [[30, 'q6–8h'], [15, 'q12h'], [0, 'q24h']], hd: '1.5–3 g q12–24h，透析後給' },
+  { n: 'Piperacillin / Tazobactam', c: 'β-lactam / BLI', sp: 'GNB 含綠膿桿菌、厭氧菌、MSSA、腸球菌（E. faecalis）', d: '4.5 g IV q6h（或 4.5 g q8h 延長輸注 4 小時）', r: [[41, '不需調整'], [20, '2.25 g q6h（院內肺炎 3.375 g q6h）'], [0, '2.25 g q8h（院內肺炎 2.25 g q6h）']], hd: '2.25 g q12h（院內肺炎 q8h），透析後加 0.75 g' },
+  { n: 'Cefoperazone / Sulbactam', c: 'β-lactam / BLI', sp: 'GNB（含部分綠膿桿菌、A. baumannii）、厭氧菌；主要經膽道排除', d: '2 g（1:1）IV q12h，嚴重可 4 g q12h', r: [[30, '不需調整'], [15, 'Sulbactam 每日 ≤ 2 g（1 g q12h）'], [0, 'Sulbactam 每日 ≤ 1 g（500 mg q12h）']], hd: '透析後給藥', note: '可能延長 PT（維生素 K 依賴），需注意出血。' },
+  // Cephalosporins
+  { n: 'Cefazolin', c: '第一代頭孢菌素', sp: 'MSSA、鏈球菌、部分 E. coli / Klebsiella / Proteus', d: '1–2 g IV q8h（MSSA 菌血症 2 g q8h）', r: [[35, '不需調整'], [11, '50% 劑量 q12h'], [0, '50% 劑量 q24h']], hd: '2 g 每次透析後（每週三次）' },
+  { n: 'Cefuroxime', c: '第二代頭孢菌素', sp: '鏈球菌、MSSA、H. influenzae、M. catarrhalis、部分腸內菌', d: 'IV 750 mg–1.5 g q8h；PO 250–500 mg q12h', r: [[20, '不需調整'], [10, 'IV 750 mg q12h'], [0, 'IV 750 mg q24h']], hd: '透析後給一劑' },
+  { n: 'Ceftriaxone', c: '第三代頭孢菌素', sp: '肺炎鏈球菌、腸內菌（非 ESBL）、H. influenzae、淋病、N. meningitidis；不涵蓋綠膿桿菌、腸球菌', d: '1–2 g IV q24h（腦膜炎 2 g q12h）', r: NA, hd: '不需調整', note: '新生兒避免與含鈣輸液同時使用；可致膽泥。' },
+  { n: 'Cefotaxime', c: '第三代頭孢菌素', sp: '類似 ceftriaxone', d: '1–2 g IV q8h（腦膜炎 2 g q4–6h）', r: [[20, '不需調整'], [0, '50% 劑量']], hd: '50% 劑量，透析後給' },
+  { n: 'Ceftazidime', c: '第三代頭孢菌素', sp: 'GNB 含綠膿桿菌；革蘭氏陽性菌效果差', d: '1–2 g IV q8h', r: [[51, '不需調整'], [31, '1 g q12h'], [16, '1 g q24h'], [6, '500 mg q24h'], [0, '500 mg q48h']], hd: '負荷 1 g，之後每次透析後 1 g' },
+  { n: 'Cefepime', c: '第四代頭孢菌素', sp: 'GNB 含綠膿桿菌、AmpC 菌種、MSSA、鏈球菌', d: '1–2 g IV q8–12h（綠膿桿菌 / 嗜中性球低下發燒 2 g q8h）', r: [[61, '2 g q8h'], [30, '2 g q12h'], [11, '2 g q24h'], [0, '1 g q24h']], hd: '1 g q24h，透析日於透析後給', note: '腎功能不全未減量易致神經毒性（意識改變、非痙攣性癲癇）。' },
+  { n: 'Ceftazidime / Avibactam', c: '新型 β-lactam / BLI', sp: 'CRE（KPC、OXA-48）、多重抗藥綠膿桿菌；不涵蓋 MBL（NDM）除非併用 aztreonam', d: '2.5 g IV q8h（輸注 2 小時）', r: [[51, '2.5 g q8h'], [31, '1.25 g q8h'], [16, '0.94 g q12h'], [6, '0.94 g q24h'], [0, '0.94 g q48h']], hd: '透析後給藥' },
+  { n: 'Ceftolozane / Tazobactam', c: '新型 β-lactam / BLI', sp: '多重抗藥綠膿桿菌、ESBL 腸內菌', d: '1.5 g IV q8h（院內肺炎 3 g q8h）', r: [[51, '不需調整'], [30, '750 mg q8h（肺炎 1.5 g q8h）'], [15, '375 mg q8h（肺炎 750 mg q8h）'], [0, 'ESRD/HD：750 mg 後 150 mg q8h（肺炎 2.25 g 後 450 mg q8h）']], hd: '見 CrCl < 15 欄位' },
+  // Carbapenems / Monobactam
+  { n: 'Ertapenem', c: 'Carbapenem', sp: 'ESBL 腸內菌、厭氧菌、MSSA；不涵蓋綠膿桿菌、Acinetobacter、腸球菌', d: '1 g IV q24h', r: [[31, '不需調整'], [0, '500 mg q24h']], hd: '500 mg q24h；透析前 6 小時內給藥者透析後補 150 mg' },
+  { n: 'Imipenem / Cilastatin', c: 'Carbapenem', sp: '廣效：GNB 含綠膿桿菌、ESBL、厭氧菌、MSSA、E. faecalis', d: '500 mg IV q6h（或 1 g q6–8h）', r: [[90, '500 mg q6h'], [60, '400 mg q6h'], [30, '300 mg q6h'], [15, '200 mg q6h'], [0, '不建議，除非 48 小時內開始透析']], hd: '200 mg q6h 或依仿單', note: '癲癇風險高於 meropenem。' },
+  { n: 'Meropenem', c: 'Carbapenem', sp: '廣效：GNB 含綠膿桿菌、ESBL、厭氧菌', d: '1 g IV q8h（腦膜炎、嚴重綠膿桿菌 2 g q8h，可延長輸注）', r: [[51, '1 g q8h'], [26, '1 g q12h'], [10, '500 mg q12h'], [0, '500 mg q24h']], hd: '500 mg q24h，透析後給', note: '與 valproic acid 併用會大幅降低 valproate 血中濃度。' },
+  { n: 'Aztreonam', c: 'Monobactam', sp: 'GNB 含綠膿桿菌；可用於 β-lactam 過敏（ceftazidime 過敏除外）', d: '1–2 g IV q8h（綠膿桿菌 2 g q6–8h）', r: [[31, '不需調整'], [10, '首劑全量，之後 50%'], [0, '首劑全量，之後 25%']], hd: '首劑全量後 25%，透析後補 1/8 首劑' },
+  // Glycopeptides & Gram-positive agents
+  { n: 'Vancomycin', c: 'Glycopeptide', sp: 'MRSA、MRSE、腸球菌（非 VRE）、C. difficile（口服）', d: '負荷 20–35 mg/kg（重症）；維持 15–20 mg/kg q8–12h，依 AUC 400–600 調整', r: [[50, '15–20 mg/kg q8–12h'], [20, '15–20 mg/kg q24h'], [0, '負荷後依血中濃度給藥']], hd: '負荷 20–25 mg/kg，之後透析後 5–10 mg/kg（依透析前濃度）', note: '需 TDM；與 pip/tazo 併用 AKI 風險增加。口服 C. difficile：125 mg PO q6h。' },
+  { n: 'Teicoplanin', c: 'Glycopeptide', sp: 'MRSA、腸球菌（非 VanA）、鏈球菌', d: '負荷 6–12 mg/kg q12h × 3–5 劑，之後 6–12 mg/kg q24h', r: [[80, '不需調整'], [30, '第 4 天起：劑量減半（或原劑量 q48h）'], [0, '第 4 天起：1/3 劑量（或原劑量 q72h）']], hd: '同 CrCl < 30', note: '嚴重感染建議谷濃度 ≥ 15–30 mg/L。' },
+  { n: 'Daptomycin', c: 'Lipopeptide', sp: 'MRSA、VRE、鏈球菌；不可用於肺炎（被肺表面張力素失活）', d: '6 mg/kg IV q24h（菌血症 / 心內膜炎 8–12 mg/kg）', r: [[30, 'q24h'], [0, 'q48h']], hd: 'q48h，透析後給', note: '每週追蹤 CK；停用 statin 或密切監測。' },
+  { n: 'Linezolid', c: 'Oxazolidinone', sp: 'MRSA、VRE、鏈球菌', d: '600 mg IV/PO q12h', r: NA, hd: '不需調整，透析後給', note: '> 2 週易血小板低下；serotonin syndrome（與 SSRI 併用）；乳酸中毒。' },
+  { n: 'Tigecycline', c: 'Glycylcycline', sp: 'MRSA、VRE、ESBL、部分 CRE、A. baumannii；不涵蓋綠膿桿菌、Proteus', d: '首劑 100 mg，之後 50 mg IV q12h（高劑量 200 mg 後 100 mg q12h）', r: NA, hd: '不需調整', note: 'FDA 黑框：全因死亡率增加，不建議用於菌血症；Child-Pugh C：25 mg q12h。' },
+  // Aminoglycosides
+  { n: 'Gentamicin', c: 'Aminoglycoside', sp: 'GNB；與 β-lactam 併用協同治療腸球菌 / 鏈球菌心內膜炎', d: '延長間隔 5–7 mg/kg q24h；傳統 1–1.7 mg/kg q8h', r: [[60, 'q24h'], [40, 'q36h'], [20, 'q48h'], [0, '單次給藥後依血中濃度']], hd: '1–2 mg/kg 透析後（依濃度）', note: '腎毒性、耳毒性；以 IBW（肥胖用 AdjBW）計算；需 TDM。' },
+  { n: 'Amikacin', c: 'Aminoglycoside', sp: 'GNB 含部分 gentamicin 抗藥菌、綠膿桿菌、非結核分枝桿菌', d: '15–20 mg/kg IV q24h', r: [[60, 'q24h'], [40, 'q36h'], [20, 'q48h'], [0, '單次給藥後依血中濃度']], hd: '5–7.5 mg/kg 透析後（依濃度）', note: '需 TDM（峰值 / 谷值）。' },
+  // Quinolones
+  { n: 'Ciprofloxacin', c: 'Fluoroquinolone', sp: 'GNB 含綠膿桿菌；鏈球菌效果差', d: 'IV 400 mg q8–12h；PO 500–750 mg q12h', r: [[50, '不需調整'], [30, 'PO 250–500 mg q12h'], [0, 'PO 250–500 mg q18h；IV 200–400 mg q18–24h']], hd: 'PO 250–500 mg q24h，透析後給', note: '肌腱炎 / 斷裂、QT 延長、血糖異常、主動脈瘤風險；與鈣、鐵、制酸劑間隔服用。' },
+  { n: 'Levofloxacin', c: 'Fluoroquinolone', sp: '呼吸道菌（肺炎鏈球菌、非典型菌）、GNB、部分綠膿桿菌', d: '750 mg IV/PO q24h', r: [[50, '不需調整'], [20, '750 mg q48h'], [0, '首劑 750 mg，之後 500 mg q48h']], hd: '首劑 750 mg，之後 500 mg q48h', note: '同 fluoroquinolone 類警語。台灣結核盛行，使用前需排除肺結核。' },
+  { n: 'Moxifloxacin', c: 'Fluoroquinolone', sp: '呼吸道菌、非典型菌、厭氧菌；不涵蓋綠膿桿菌；尿液濃度低', d: '400 mg IV/PO q24h', r: NA, hd: '不需調整', note: 'QT 延長較明顯。' },
+  // Macrolides / Tetracyclines / Others
+  { n: 'Azithromycin', c: 'Macrolide', sp: '非典型菌（Mycoplasma、Chlamydophila、Legionella）、H. influenzae', d: 'PO 500 mg 第 1 天，之後 250 mg qd；IV 500 mg q24h', r: NA, hd: '不需調整', note: 'QT 延長。' },
+  { n: 'Clarithromycin', c: 'Macrolide', sp: '非典型菌、H. pylori、非結核分枝桿菌', d: '500 mg PO q12h', r: [[30, '不需調整'], [0, '50% 劑量']], hd: '50% 劑量，透析後給', note: '強力 CYP3A4 抑制劑，交互作用多。' },
+  { n: 'Doxycycline', c: 'Tetracycline', sp: '非典型菌、立克次體、恙蟲病、MRSA（皮膚軟組織）、梅毒替代', d: '100 mg PO/IV q12h（可先 200 mg）', r: NA, hd: '不需調整' },
+  { n: 'Minocycline', c: 'Tetracycline', sp: 'MRSA、A. baumannii、S. maltophilia、非典型菌', d: '首劑 200 mg，之後 100 mg q12h', r: [[80, '不需調整'], [0, '每日總量 ≤ 200 mg']], hd: '每日 ≤ 200 mg' },
+  { n: 'TMP-SMX', c: 'Sulfonamide', sp: 'MRSA（CA）、S. maltophilia、PJP、Nocardia、尿路 GNB', d: '膀胱炎：DS 1 錠 q12h；嚴重感染 / PJP：TMP 15–20 mg/kg/day 分 q6–8h', r: [[30, '不需調整'], [15, '50% 劑量'], [0, '不建議（必要時 50% 並監測）']], hd: '50% 劑量，透析後給', note: '高血鉀、骨髓抑制、Cr 假性上升；與 warfarin 交互作用。' },
+  { n: 'Clindamycin', c: 'Lincosamide', sp: '厭氧菌（B. fragilis 抗藥增加）、MSSA、部分 MRSA、鏈球菌；毒素抑制（壞死性筋膜炎）', d: 'IV 600–900 mg q8h；PO 300–450 mg q6–8h', r: NA, hd: '不需調整', note: 'C. difficile 感染風險高。' },
+  { n: 'Metronidazole', c: 'Nitroimidazole', sp: '厭氧菌、C. difficile、Trichomonas、阿米巴', d: '500 mg IV/PO q8h（或 q12h）', r: NA, hd: '透析後給藥', note: 'Child-Pugh C：減量 50%；服藥期間避免飲酒。' },
+  { n: 'Colistin（Colistimethate）', c: 'Polymyxin', sp: 'CRE、MDR 綠膿桿菌、A. baumannii；不涵蓋 Proteus、Serratia、Burkholderia', d: '負荷 300 mg CBA（約 9 MIU），12–24 h 後依 CrCl 給維持劑量（每日量分 q12h）', r: [[90, '360 mg CBA/day'], [80, '340 mg/day'], [70, '300 mg/day'], [60, '275 mg/day'], [50, '245 mg/day'], [40, '220 mg/day'], [30, '195 mg/day'], [20, '175 mg/day'], [10, '160 mg/day'], [5, '145 mg/day'], [0, '130 mg/day']], hd: '130 mg CBA/day，透析日於透析後加 40–50 mg', note: '1 MIU ≈ 33 mg CBA。腎毒性、神經毒性；依 2019 國際共識。' },
+  { n: 'Nitrofurantoin', c: 'Nitrofuran', sp: '單純膀胱炎（E. coli、E. faecalis）；不適用腎盂腎炎', d: 'Macrocrystals 100 mg PO q12h × 5 天', r: [[30, '可使用'], [0, '避免使用']], hd: '避免使用' },
+  { n: 'Fosfomycin（口服）', c: 'Phosphonic acid', sp: '單純膀胱炎（含 ESBL E. coli）', d: '3 g PO 單次', r: NA, hd: '—' },
+  // Antifungals
+  { n: 'Fluconazole', c: 'Azole 抗黴菌', sp: 'C. albicans、C. tropicalis、C. parapsilosis、隱球菌；不涵蓋 C. krusei、部分 C. glabrata、黴菌', d: '念珠菌血症：首劑 800 mg（12 mg/kg），之後 400 mg（6 mg/kg）q24h', r: [[51, '不需調整'], [0, '負荷劑量後 50%']], hd: '每次透析後給全劑量' },
+  { n: 'Voriconazole', c: 'Azole 抗黴菌', sp: 'Aspergillus、念珠菌（含 C. krusei）、Fusarium', d: 'IV 6 mg/kg q12h × 2 劑，之後 4 mg/kg q12h；PO 200–300 mg q12h', r: [[50, '不需調整'], [0, '口服不需調整；IV 劑型（含 SBECD）宜改口服或審慎使用']], hd: '口服不需調整', note: 'TDM 谷濃度 1–5.5 mg/L；視覺異常、肝毒性、光敏感；交互作用多。' },
+  { n: 'Micafungin', c: 'Echinocandin', sp: '念珠菌（含 azole 抗藥）；Aspergillus 補救', d: '100 mg IV q24h（食道念珠菌 150 mg）', r: NA, hd: '不需調整', note: '尿液濃度低，不適用念珠菌尿路感染。' },
+  { n: 'Anidulafungin', c: 'Echinocandin', sp: '念珠菌', d: '首劑 200 mg，之後 100 mg IV q24h', r: NA, hd: '不需調整' },
+  { n: 'Caspofungin', c: 'Echinocandin', sp: '念珠菌、Aspergillus（補救）', d: '首劑 70 mg，之後 50 mg IV q24h', r: NA, hd: '不需調整', note: 'Child-Pugh B：維持 35 mg q24h。' },
+  { n: 'Liposomal Amphotericin B', c: 'Polyene', sp: '廣效抗黴菌：隱球菌、毛黴菌、組織胞漿菌、念珠菌、Aspergillus', d: '3–5 mg/kg IV q24h（毛黴菌 5–10 mg/kg）', r: NA, hd: '不需調整', note: '腎毒性、低血鉀、低血鎂；輸注前可補充生理食鹽水。' },
+  // Antivirals
+  { n: 'Acyclovir（IV）', c: '抗病毒', sp: 'HSV、VZV', d: '5–10 mg/kg IV q8h（HSV 腦炎 / 播散性 VZV 10 mg/kg）', r: [[50, 'q8h'], [25, 'q12h'], [10, 'q24h'], [0, '50% 劑量 q24h']], hd: '50% 劑量 q24h，透析後給', note: '肥胖以 IBW 計算；充分水分補充避免結晶性腎病變。' },
+  { n: 'Oseltamivir', c: '抗病毒', sp: 'Influenza A / B', d: '75 mg PO q12h × 5 天', r: [[61, '不需調整'], [31, '30 mg q12h'], [11, '30 mg q24h'], [0, 'ESRD 未透析不建議']], hd: '30 mg 每次透析後' }
+];
+
+function tierLabel(r, i) {
+  const lo = r[i][0];
+  if (i === 0) return lo === 0 ? '所有' : `≥ ${lo}`;
+  const hi = r[i - 1][0];
+  return lo === 0 ? `< ${hi}` : `${lo}–${hi - 1}`;
+}
+
+let abxQ = '', abxCrcl = '', abxCls = '全部';
+function renderAbx() {
+  const classes = ['全部', ...[...new Set(ABX.map(a => a.c))]];
+  app.innerHTML = `
+    <button class="back" id="back">‹ 所有公式</button>
+    <div class="dhead"><div style="flex:1"><h2>抗生素劑量表</h2><div class="e">成人劑量與腎功能調整（CrCl, mL/min）</div></div>
+      <button class="star ${favs.includes('abx') ? 'on' : ''}" id="fav">${favs.includes('abx') ? '★' : '☆'}</button></div>
+    <div class="card">
+      <div class="field"><div class="flabel"><span>病人 CrCl</span><small><a href="#crcl" style="color:var(--accent)">用 Cockcroft-Gault 計算 ›</a></small></div>
+        <div class="numrow"><input inputmode="decimal" id="crcl" value="${esc(abxCrcl)}" placeholder="輸入後自動標示對應劑量"><span class="u">mL/min</span></div></div>
+      <div class="field"><input class="search" id="aq" type="search" placeholder="搜尋藥名或菌種：MRSA、綠膿、ESBL…" value="${esc(abxQ)}"></div>
+    </div>
+    <div class="chips">${classes.map(c => `<button class="chip ${c === abxCls ? 'on' : ''}" data-c="${c}">${c}</button>`).join('')}</div>
+    <div id="abxlist"></div>
+    <p class="disclaimer">依各藥品仿單（FDA / TFDA）與 IDSA 等指引整理之一般成人劑量，並非熱病內容之重製。實際使用請對照最新版熱病、院內處方集與藥師建議，並依感染部位、體重、肝功能與 TDM 調整。</p>`;
+  document.getElementById('back').onclick = () => { location.hash = ''; };
+  document.getElementById('fav').onclick = e => { toggleFav('abx'); e.target.classList.toggle('on'); e.target.textContent = favs.includes('abx') ? '★' : '☆'; };
+  const ci = document.getElementById('crcl'), aq = document.getElementById('aq');
+  ci.addEventListener('input', () => { abxCrcl = ci.value; drawAbx(); });
+  aq.addEventListener('input', () => { abxQ = aq.value; drawAbx(); });
+  app.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { abxCls = b.dataset.c; app.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); drawAbx(); });
+  drawAbx();
+  window.scrollTo(0, 0);
+}
+function drawAbx() {
+  const q = abxQ.trim().toLowerCase(), cr = n(abxCrcl);
+  const list = ABX.filter(a => (abxCls === '全部' || a.c === abxCls) && (!q || (a.n + a.c + a.sp + (a.note || '')).toLowerCase().includes(q)));
+  const box = document.getElementById('abxlist');
+  if (!list.length) { box.innerHTML = '<div class="empty">找不到符合的藥物</div>'; return; }
+  box.innerHTML = list.map(a => {
+    const idx = cr === null ? -1 : a.r.findIndex(t => cr >= t[0]);
+    const cur = idx >= 0 ? a.r[idx][1] : null;
+    return `<div class="card abx">
+      <div class="abx-h"><span class="abx-n">${a.n}</span><span class="abx-c">${a.c}</span></div>
+      <div class="abx-sp">${a.sp}</div>
+      <div class="abx-row"><b>常用劑量</b><span>${a.d}</span></div>
+      ${cur ? `<div class="interp lv-info" style="margin-top:8px">CrCl ${cr}：<b>${cur}</b></div>` : ''}
+      ${a.r.length > 1 ? `<div class="tiers">${a.r.map((t, i) => `<div class="${i === idx ? 'on' : ''}"><span>${tierLabel(a.r, i)}</span><span>${t[1]}</span></div>`).join('')}</div>` : '<div class="abx-row"><b>腎功能</b><span>不需調整</span></div>'}
+      <div class="abx-row"><b>血液透析</b><span>${a.hd}</span></div>
+      ${a.note ? `<div class="abx-note">${a.note}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ---------- state ----------
+let favs = [];
+try { favs = JSON.parse(localStorage.getItem('medcalc-favs') || '[]'); } catch (e) {}
+const saveFavs = () => { try { localStorage.setItem('medcalc-favs', JSON.stringify(favs)); } catch (e) {} };
+let filterCat = '全部', query = '';
+const app = document.getElementById('app');
+
+function toggleFav(id) {
+  favs = favs.includes(id) ? favs.filter(x => x !== id) : [...favs, id];
+  saveFavs();
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---------- home ----------
+// 本機知識庫（FastAPI）把計算機放在 /static/medcalc/，首頁是 /；發布版在 medcalc/，上一層就是知識庫
+const KB_HREF = location.pathname.indexOf('/static/medcalc') === 0 ? '/' : '../';
+function renderHome() {
+  const cats = ['全部', '★ 常用', ...CATS];
+  app.innerHTML = `
+    <header class="top"><h1>MedCalc</h1><span>臨床常用計算公式</span><a class="kb" href="${KB_HREF}">‹ 知識庫</a></header>
+    <input class="search" id="q" type="search" placeholder="搜尋：eGFR、鈉、QTc、肝…" value="${esc(query)}">
+    <div class="chips">${cats.map(c => `<button class="chip ${c === filterCat ? 'on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div>
+    <div id="lists"></div>
+    <p class="disclaimer">本工具僅供教學與臨床參考，不能取代臨床判斷。使用前請確認單位與適用族群。</p>`;
+  const q = document.getElementById('q');
+  q.addEventListener('input', () => { query = q.value; renderLists(); });
+  app.querySelectorAll('.chip').forEach(b => b.onclick = () => { filterCat = b.dataset.cat; renderHome(); });
+  renderLists();
+}
+
+function renderLists() {
+  const ql = query.trim().toLowerCase();
+  let items = CALCS.filter(c => !ql || (c.name + c.en + c.cat + c.id).toLowerCase().includes(ql));
+  if (filterCat === '★ 常用') items = items.filter(c => favs.includes(c.id));
+  else if (filterCat !== '全部') items = items.filter(c => c.cat === filterCat);
+  const box = document.getElementById('lists');
+  if (!items.length) {
+    box.innerHTML = `<div class="empty">${filterCat === '★ 常用' && !ql ? '點擊公式旁的 ☆ 加入常用' : '找不到符合的公式'}</div>`;
+    return;
+  }
+  const groups = filterCat === '全部' || filterCat === '★ 常用' ? CATS.filter(c => items.some(i => i.cat === c)) : [filterCat];
+  box.innerHTML = groups.map(g => `
+    <div class="group-title">${g}</div>
+    <div class="list">${items.filter(i => i.cat === g).map(i => `
+      <a class="item" href="#${i.id}">
+        <div class="t"><div class="n">${i.name}</div><div class="e">${i.en}</div></div>
+        <button class="star ${favs.includes(i.id) ? 'on' : ''}" data-fav="${i.id}" aria-label="加入常用">${favs.includes(i.id) ? '★' : '☆'}</button>
+      </a>`).join('')}</div>`).join('');
+  box.querySelectorAll('[data-fav]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); toggleFav(b.dataset.fav); renderLists(); });
+}
+
+// ---------- detail ----------
+const values = {};
+function renderDetail(c) {
+  const v = values[c.id] || (values[c.id] = {});
+  c.inputs.forEach(i => { if (!(i.id in v)) v[i.id] = i.type === 'chk' ? 0 : (i.def ?? (i.type === 'num' ? '' : i.options[0][0])); });
+  const field = i => {
+    if (i.type === 'num') return `<div class="field"><div class="flabel"><span>${i.label}</span>${i.opt ? '<small>選填</small>' : ''}</div>
+      <div class="numrow"><input inputmode="decimal" data-id="${i.id}" value="${esc(v[i.id])}" placeholder="—"><span class="u">${(typeof i.unit === 'function' ? i.unit(v) : i.unit) || ''}</span></div></div>`;
+    if (i.type === 'sel') return `<div class="field"><div class="flabel"><span>${i.label}</span></div>
+      <div class="seg">${i.options.map(([val, lab]) => `<button data-id="${i.id}" data-val="${val}" class="${String(v[i.id]) === val ? 'on' : ''}">${lab}</button>`).join('')}</div></div>`;
+    if (i.type === 'list') return `<div class="field"><div class="flabel"><span>${i.label}</span></div>
+      <select data-id="${i.id}">${i.options.map(([val, lab]) => `<option value="${val}" ${String(v[i.id]) === val ? 'selected' : ''}>${lab}</option>`).join('')}</select></div>`;
+    if (i.type === 'chk') return `<div class="field"><label class="chk"><input type="checkbox" data-id="${i.id}" data-pts="${i.pts}" ${v[i.id] ? 'checked' : ''}><span class="l">${i.label}</span>${c.score ? `<span class="p">+${i.pts}</span>` : ''}</label></div>`;
+  };
+  app.innerHTML = `
+    <button class="back" id="back">‹ 所有公式</button>
+    <div class="dhead"><div style="flex:1"><h2>${c.name}</h2><div class="e">${c.en}</div></div>
+      <button class="star ${favs.includes(c.id) ? 'on' : ''}" id="fav">${favs.includes(c.id) ? '★' : '☆'}</button></div>
+    <div class="card">${c.inputs.map(field).join('')}</div>
+    <div class="card result" id="res"></div>
+    <div class="card info">
+      <h3>公式</h3><pre class="formula">${c.formula}</pre>
+      ${c.note ? `<h3>臨床提醒</h3><p class="note">${c.note}</p>` : ''}
+      ${c.extra || ''}
+      <h3>參考文獻</h3><p class="ref">${c.ref}</p>
+    </div>
+    <button class="reset" id="reset">清除輸入</button>
+    <p class="disclaimer">本工具僅供教學與臨床參考，不能取代臨床判斷。</p>`;
+  document.getElementById('back').onclick = () => { location.hash = ''; };
+  document.getElementById('fav').onclick = e => { toggleFav(c.id); e.target.classList.toggle('on'); e.target.textContent = favs.includes(c.id) ? '★' : '☆'; };
+  document.getElementById('reset').onclick = () => { delete values[c.id]; renderDetail(c); };
+  app.querySelectorAll('input[inputmode]').forEach(el => el.addEventListener('input', () => { v[el.dataset.id] = el.value; update(c); }));
+  app.querySelectorAll('.seg button').forEach(el => el.onclick = () => {
+    v[el.dataset.id] = el.dataset.val;
+    el.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el));
+    if (c.inputs.some(i => typeof i.unit === 'function')) { const y = window.scrollY; renderDetail(c); window.scrollTo(0, y); return; }
+    update(c);
+  });
+  app.querySelectorAll('select').forEach(el => el.onchange = () => {
+    v[el.dataset.id] = el.value;
+    const inp = c.inputs.find(i => i.id === el.dataset.id);
+    if (inp && inp.apply) { inp.apply(v, el.value); const y = window.scrollY; renderDetail(c); window.scrollTo(0, y); return; }
+    if (inp && typeof c.inputs.find(i => typeof i.unit === 'function') !== 'undefined') { const y = window.scrollY; renderDetail(c); window.scrollTo(0, y); return; }
+    update(c);
+  });
+  app.querySelectorAll('input[type=checkbox]').forEach(el => el.onchange = () => { v[el.dataset.id] = el.checked ? Number(el.dataset.pts) : 0; update(c); });
+  update(c);
+  window.scrollTo(0, 0);
+}
+
+function update(c) {
+  const raw = values[c.id], v = {};
+  c.inputs.forEach(i => { v[i.id] = i.type === 'num' ? n(raw[i.id]) : raw[i.id]; });
+  let r = null;
+  try { r = c.compute(v); } catch (e) { r = null; }
+  const box = document.getElementById('res');
+  if (!r) { box.innerHTML = `<div class="placeholder">請輸入所有必填欄位以顯示結果</div>`; return; }
+  box.innerHTML = `
+    <div class="res-main"><span class="lab">${r.main[0]}</span><span class="v">${r.main[1]}</span><span class="u">${r.main[2]}</span></div>
+    ${r.rows.length ? `<div class="rows">${r.rows.map(([a, b]) => `<span>${a}</span><span class="rv">${b}</span>`).join('')}</div>` : ''}
+    ${r.interp ? `<div class="interp lv-${r.lv}">${r.interp}</div>` : ''}`;
+}
+
+// ---------- router ----------
+function route() {
+  const id = location.hash.slice(1);
+  const c = CALCS.find(x => x.id === id);
+  if (c && c.custom) renderAbx(); else c ? renderDetail(c) : renderHome();
+}
+window.addEventListener('hashchange', route);
+route();
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
