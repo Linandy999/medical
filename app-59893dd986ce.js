@@ -627,10 +627,11 @@ function md(src) {
     .replace(/\[([^\]]+)\]\(#entry-(\d+)-(\d+)\)/g,
              '<a href="#" class="entry-link" data-jump="$2" data-jumptopic="$3">$1</a>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-    // [文字](/static/refs/檔名.pdf)：本機參考文件（PDF 放在 web/static/refs/）。發布版不帶這些檔，改成純文字
-    .replace(/\[([^\]]+)\]\((\/static\/refs\/[\w.\-]+)\)/g,
-             (m, t, u) => window.__MEDKB__ ? t + '（僅本機可開）'
-               : '<a href="' + u + '" target="_blank" rel="noreferrer">' + t + '</a>');
+    // [文字](/static/refs/檔名.pdf)：參考文件（PDF 放在 web/static/refs/）。
+    // 發布版由 publish.sh 把整個 refs 資料夾同步到網站的 refs/，所以連結改成相對路徑 refs/檔名
+    .replace(/\[([^\]]+)\]\(\/static\/refs\/([\w.\-]+)\)/g,
+             (m, t, f) => '<a href="' + (window.__MEDKB__ ? 'refs/' : '/static/refs/') + f
+               + '" target="_blank" rel="noreferrer">' + t + '</a>');
   const closeList = () => { while (stack.length) out.push('</' + stack.pop() + '>'); };
   const closeTbl = () => { if (tbl) { out.push('</tbody></table>'); tbl = null; } };
   // 引言整段收集起來再遞迴丟回 md()，框內的表格與清單才不會被當成純文字
