@@ -969,7 +969,7 @@ function renderCatNav(overview) {
   const shownCats = cats.filter(c => state.showEmptyCats || !isEmpty(c));
   const rows = shownCats.map((c, idx) => `
     <a href="#cat-${c.slug}" data-slug="${c.slug}" class="${isEmpty(c) ? 'empty' : ''} ${inKb && state.activeCat === c.slug ? 'active' : ''}">
-      <span>${idx + 1}. ${esc(c.name)}${c.conflicts ? ' <span class="cflag">⚠</span>' : ''}</span>
+      <span>${esc(c.name)}${c.conflicts ? ' <span class="cflag">⚠</span>' : ''}</span>
       ${isEmpty(c) ? '<span class="badge">尚無資料</span>' : ''}
     </a>`).join('');
   // 參考文獻區塊（有才顯示）接在分類清單後面，筆記區再往後排
@@ -983,7 +983,7 @@ function renderCatNav(overview) {
   const extra = `
     <div class="cat-extra">
       <a href="#" data-view="notes" class="special note ${state.activeCat === '__notes' ? 'active' : ''}">
-        <span class="lbl"><span class="sq"></span>${noteNo}. 筆記區</span>
+        <span class="lbl"><span class="sq"></span>筆記區</span>
       </a>
     </div>`;
   nav.innerHTML = rows + refRow + extra;
@@ -1165,7 +1165,7 @@ function renderKnowledge(sections) {
     <section class="cat ${s.count ? '' : 'is-empty'} ${catFolded(s.slug) ? 'folded' : ''}" id="cat-${s.slug}">
       <div class="cat-head" data-fold="${s.slug}" title="點擊收合／展開這個分類">
         <span class="fold-caret">▾</span>
-        <h2>${s.slug === 'reference' ? '' : `<span class="cat-no">${idx + 1}</span>`}${esc(s.name)}</h2>
+        <h2>${esc(s.name)}</h2>
         ${s.count ? '' : '<span class="n">尚無資料</span>'}</div>
       ${s.conflicts.map(c => renderConflict(c)).join('')}
       ${!s.sources.length ? ((s.exam_questions && s.exam_questions.length) ? '' : '<div class="empty-note">尚無資料</div>') : grouped ? renderBySub(s, subs) : s.sources.map(g => `

@@ -1164,6 +1164,43 @@ body.ai-resizing{user-select:none;cursor:ew-resize}
 .page-note-fold.no-body > #pageNoteBody{display:none}
 .page-note-fold table{margin:6px 0}
 
+/* ---------- 分類色點（2026-11-12）----------
+   每個分類一個顏色：卡片左側色條、分類標題前的圓點、側欄分類清單的圓點。
+   取代原本的分類編號（1. 2. 3.）。 */
+:root{
+  --c-definition:#8a8276; --c-epidemiology:#7d6aa8; --c-etiology:#a8743a; --c-risk_factors:#b0882a;
+  --c-clinical:#3f6fb0; --c-diagnosis:#1e6f66; --c-differential:#2f8a9a; --c-treatment:#3f7a3a;
+  --c-prognosis:#6b7c8f; --c-complications:#b4402f; --c-prevention:#5a8a3c; --c-reference:#8a8276;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --c-definition:#a39b8e; --c-epidemiology:#a993d6; --c-etiology:#d29a5c; --c-risk_factors:#d6b04e;
+    --c-clinical:#7fa8e0; --c-diagnosis:#5fbfae; --c-differential:#5cc0d0; --c-treatment:#72c078;
+    --c-prognosis:#9aabbf; --c-complications:#e58272; --c-prevention:#93c06a; --c-reference:#a39b8e;
+  }
+}
+#cat-definition,.cat-nav a[data-slug="definition"]{--cc:var(--c-definition)}
+#cat-epidemiology,.cat-nav a[data-slug="epidemiology"]{--cc:var(--c-epidemiology)}
+#cat-etiology,.cat-nav a[data-slug="etiology"]{--cc:var(--c-etiology)}
+#cat-risk_factors,.cat-nav a[data-slug="risk_factors"]{--cc:var(--c-risk_factors)}
+#cat-clinical,.cat-nav a[data-slug="clinical"]{--cc:var(--c-clinical)}
+#cat-diagnosis,.cat-nav a[data-slug="diagnosis"]{--cc:var(--c-diagnosis)}
+#cat-differential,.cat-nav a[data-slug="differential"]{--cc:var(--c-differential)}
+#cat-treatment,.cat-nav a[data-slug="treatment"]{--cc:var(--c-treatment)}
+#cat-prognosis,.cat-nav a[data-slug="prognosis"]{--cc:var(--c-prognosis)}
+#cat-complications,.cat-nav a[data-slug="complications"]{--cc:var(--c-complications)}
+#cat-prevention,.cat-nav a[data-slug="prevention"]{--cc:var(--c-prevention)}
+#cat-reference,.cat-nav a[data-slug="reference"]{--cc:var(--c-reference)}
+section.cat .card{border-left:4px solid var(--cc,var(--border))}
+.cat-head{border-bottom-color:color-mix(in srgb,var(--cc,var(--border)) 45%,var(--border))}
+.cat-head h2::before{content:'';display:inline-block;width:11px;height:11px;border-radius:50%;
+  background:var(--cc,var(--faint));margin-right:9px;vertical-align:.08em}
+.cat-nav a[data-slug]{justify-content:flex-start}
+.cat-nav a[data-slug] .badge{margin-left:auto}
+.cat-nav a[data-slug]::before{content:'';flex:0 0 8px;width:8px;height:8px;border-radius:50%;
+  background:var(--cc,var(--faint))}
+.cat-nav a.empty::before{opacity:.4}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1704,13 +1741,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-59893dd986ce.js';
+    s.src = 'app-a578f249e9ae.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-59893dd986ce.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-a578f249e9ae.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-643bf56423e3.json').then(function (r) {
