@@ -1201,6 +1201,113 @@ section.cat .card{border-left:4px solid var(--cc,var(--border))}
   background:var(--cc,var(--faint))}
 .cat-nav a.empty::before{opacity:.4}
 
+/* ---------- 複習分頁 ---------- */
+.rv-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.rv-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.rv-panel{display:none}.rv-panel.active{display:block}
+.rv-home{max-width:760px}
+.rv-home h2{margin:0 0 6px}
+.rv-form{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}
+.rv-form label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);min-width:160px;flex:1}
+.rv-actions{display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap}
+.rv-stat{font-size:14px;color:var(--muted);margin-top:8px}
+.rv-stat b{color:var(--text)}
+.rv-quiz{max-width:820px}
+.rv-progress{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
+.rv-bar{height:4px;background:var(--panel-2);border-radius:2px;margin:6px 0 14px;overflow:hidden}
+.rv-bar i{display:block;height:100%;background:var(--accent)}
+.rv-opts{list-style:none;padding:0;margin:8px 0}
+.rv-opts li{margin:6px 0}
+.rv-opt{width:100%;text-align:left;display:flex;gap:10px;line-height:1.7;padding:8px 12px}
+.rv-opt b{color:var(--muted);min-width:16px}
+.rv-opt:disabled{opacity:1;cursor:default}
+.rv-opt.correct{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.rv-opt.wrong{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.rv-feedback{padding:8px 12px;border-radius:6px;margin:10px 0}
+.rv-feedback.ok{background:var(--ok-soft);color:var(--ok)}
+.rv-feedback.bad{background:var(--danger-soft);color:var(--danger)}
+.rv-expl{background:var(--panel-2);padding:8px 12px;border-radius:6px;font-size:15px}
+.rv-ents{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.rv-ent,.rv-dref{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:6px;padding:7px 11px;color:var(--text);background:var(--panel)}
+.rv-ent:hover,.rv-dref:hover{border-color:var(--accent)}
+.rv-ent-sec{font-weight:600;font-size:14.5px}
+.rv-ent-ex{font-size:14px;color:var(--muted);line-height:1.7}
+.rv-score{font-size:56px;font-weight:700;color:var(--accent);line-height:1.2}
+.rv-score small{font-size:24px}
+.rv-badlist{font-size:14px;color:var(--muted)}
+.rv-drugs{display:grid;grid-template-columns:280px 1fr;gap:18px;align-items:start}
+.rv-dside{position:sticky;top:70px}
+.rv-dlist{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:70vh;overflow:auto}
+.rv-dchip{font-size:13px;padding:2px 8px;display:inline-flex;gap:5px;align-items:center}
+.rv-dchip small{color:var(--faint)}
+.rv-dchip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.rv-dchip.active small{color:#fff}
+.rv-dname{margin:0}
+.rv-dgroup{margin:14px 0}
+.rv-dtopic{font-weight:700;margin-bottom:6px;color:var(--accent)}
+.rv-dgroup .rv-dref{margin-bottom:6px}
+.rv-dref mark{background:var(--warn-soft);color:inherit;padding:0 2px;border-radius:3px}
+.rv-cz{display:inline-block;min-width:3em;border-bottom:2px solid var(--accent);color:transparent;text-align:center}
+.rv-cz.on{color:var(--accent);font-weight:700;border-bottom-color:transparent;background:var(--accent-soft);border-radius:4px;padding:0 4px}
+.rv-ctable{border-collapse:collapse;font-size:15px;width:100%}
+.rv-ctable th,.rv-ctable td{border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:top}
+.rv-ctable th{background:var(--panel-2);font-size:13.5px}
+@media (max-width:760px){.rv-drugs{grid-template-columns:1fr}.rv-dside{position:static}.rv-dlist{max-height:30vh}}
+.rv-modes{display:flex;gap:0;margin:4px 0 12px;border:1px solid var(--border);border-radius:8px;overflow:hidden;width:max-content;max-width:100%}
+.rv-modes button{border:0;border-radius:0;border-right:1px solid var(--border);padding:7px 16px}
+.rv-modes button:last-child{border-right:0}
+.rv-modes button.active{background:var(--accent);color:#fff}
+.rv-cq{font-size:16.5px;line-height:2;margin:4px 0 6px}
+.rv-cz{display:inline-block;min-width:3em;padding:0 6px;border-bottom:2px solid var(--accent);color:var(--accent);font-weight:700;text-align:center}
+.rv-cz.on{border-bottom-color:transparent;background:var(--accent-soft);border-radius:4px}
+.rv-dgh{width:100%;font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 2px}
+.rv-dcls{width:100%;text-align:left;font-size:14px;padding:4px 9px;display:flex;justify-content:space-between;gap:6px}
+.rv-dcls small{color:var(--faint)}
+.rv-dcls.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.rv-dcls.active small{color:#fff}
+.rv-dmembers{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0}
+.rv-dchip em{font-style:normal;font-size:11px;background:var(--warn-soft);color:var(--warn);padding:0 4px;border-radius:3px}
+.rv-dsec{border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin:8px 0;background:var(--panel)}
+.rv-dsec summary{cursor:pointer}
+.rv-dclsline{font-size:14px;margin:6px 0 4px}
+/* 2026-11-15 調整：模式切換縮小、範圍／題數／順序放大 */
+.rv-modes button{font-size:13.5px;padding:3px 12px;line-height:1.6}
+.rv-modes{margin:0 0 16px}
+.rv-form{gap:16px;margin:8px 0 14px}
+.rv-form label{font-size:15px;font-weight:600;color:var(--text);gap:6px;min-width:220px}
+.rv-form select{font-size:18px;padding:11px 14px;min-height:50px}
+#rvStart,#rvClozeGo,#rvWrongGo{font-size:17px;padding:9px 26px}
+.rv-form{align-items:flex-end}
+.rv-form .rv-go{min-height:50px;flex:0 0 auto;font-size:17px;padding:9px 28px}
+@media (min-width:761px){.rv-form{flex-wrap:nowrap}.rv-form label{min-width:0}}
+.rv-form .rv-go{min-height:0;font-size:15px;padding:6px 18px;align-self:flex-end;margin-bottom:6px}
+/* 從複習頁跳到條目時的暫時標色（不是畫記，不會存檔） */
+.card.jump-target{outline:3px solid var(--warn);outline-offset:2px;background:var(--warn-soft)}
+mark.jump-hit{background:#ffd54a;color:#2c2a26;border-radius:3px;padding:0 2px}
+
+/* 2026-11-15：開始鈕縮小（覆蓋前面用 id 設的大尺寸）、標色只留外框、回到複習的浮動按鈕 */
+#rvStart,#rvClozeGo,#rvWrongGo{font-size:14px;padding:5px 16px;line-height:1.6;min-height:0}
+.card.jump-target{background:none;outline:2px solid var(--warn);outline-offset:3px}
+.rv-back{position:fixed;left:18px;bottom:18px;z-index:60;background:var(--accent);color:#fff;
+  border-color:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.18);padding:7px 16px}
+.rv-back:hover{color:#fff;opacity:.92}
+.rv-back[hidden]{display:none}
+
+/* 用藥總表 */
+.rv-dose{width:100%;border-collapse:collapse;margin:14px 0 6px;font-size:14.5px;background:var(--panel)}
+.rv-dose caption{text-align:left;font-weight:700;color:var(--accent);padding:4px 0}
+.rv-dose th,.rv-dose td{border:1px solid var(--border);padding:6px 9px;vertical-align:top;text-align:left;line-height:1.6}
+.rv-dose th{background:var(--panel-2);font-size:13.5px}
+.rv-dose tbody tr{cursor:pointer}
+.rv-dose tbody tr:hover td{background:var(--accent-soft)}
+.rv-dose-drug{font-weight:700;white-space:nowrap}
+.rv-dose-val{font-family:inherit;white-space:normal;min-width:9em}
+.rv-dose-ctx{font-size:13px;color:var(--muted)}
+.rv-dsub{margin:18px 0 4px;font-size:16px}
+.rv-nodose{margin:10px 0}
+/* 回到複習：放在頂端中央，比較不會被擋住 */
+.rv-back{left:50%;bottom:auto;top:64px;transform:translateX(-50%);z-index:100}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1219,6 +1326,7 @@ body.guest #noteNew{display:none}
     <button data-view="overview">總覽</button>
     <button data-view="kb" class="active">知識庫</button>
     <button data-view="exams">考古題</button>
+    <button data-view="review" title="考古練習、內文抽考、錯題本、藥物索引">複習</button>
     <button data-view="figs">圖表</button>
     <button data-view="imgs">影像</button>
     <button data-view="pubmed" id="pmTabBtn" hidden title="直接查 PubMed，不耗 AI 額度">PubMed</button>
@@ -1325,6 +1433,16 @@ body.guest #noteNew{display:none}
     </div>
 
     <!-- ============ 設定與管理 ============ -->
+    <!-- ============ 複習：考古練習／藥物索引／數字抽認卡 ============ -->
+    <div class="view" id="view-review">
+      <div class="rv-tabs">
+        <button data-rv="quiz" class="active">考古練習</button>
+        <button data-rv="drugs">藥物索引</button>
+      </div>
+      <div class="rv-panel active" id="rv-quiz"></div>
+      <div class="rv-panel" id="rv-drugs"></div>
+    </div>
+
     <div class="view" id="view-figs">
       <h1>圖表</h1>
       <div class="toolbar">
@@ -1727,12 +1845,12 @@ body.guest #noteNew{display:none}
     + '<div class="boot-bar"><i id="bootBar"></i></div></div>';
   document.body.appendChild(box);
   var msg = document.getElementById('bootMsg'), bar = document.getElementById('bootBar');
-  var TOTAL = 2922969;                      // 未壓縮的位元組數，匯出時就算好了
+  var TOTAL = 2923005;                      // 未壓縮的位元組數，匯出時就算好了
   function mb(n) { return (n / 1048576).toFixed(1); }
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-1d718fe0dd12.json</div>'
+      + '<div class="boot-detail">網址：data-995004b283b2.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -1741,16 +1859,16 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-a578f249e9ae.js';
+    s.src = 'app-630813cb473c.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-a578f249e9ae.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-630813cb473c.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-1d718fe0dd12.json').then(function (r) {
+  fetch('data-995004b283b2.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
@@ -1771,8 +1889,8 @@ body.guest #noteNew{display:none}
     // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
     // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
     if (window.caches) {
-      caches.open('medkb-1d718fe0dd12').then(function (c) {
-        c.put('data-1d718fe0dd12.json', new Response(text, {
+      caches.open('medkb-995004b283b2').then(function (c) {
+        c.put('data-995004b283b2.json', new Response(text, {
           headers: { 'Content-Type': 'application/json' } }));
       }).catch(function () {});
     }

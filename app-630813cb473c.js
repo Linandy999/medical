@@ -263,6 +263,21 @@
              offset, limit, has_more: offset + page.length < total };
   };
 
+  // ---------------------------------------------------------------- 複習：藥物索引
+  // 分檔模式下藥物索引是獨立檔案（DB.drug_file），第一次打開才下載；單檔版直接內嵌。
+  let drugCache = null;
+  R['/review/drugs'] = async () => {
+    if (DB.drug_index) return DB.drug_index;
+    if (!DB.drug_file) return { drugs: [], classes: [], groups: [] };
+    if (!drugCache) {
+      drugCache = realFetch(DB.drug_file).then(r => {
+        if (!r.ok) throw new Error('藥物索引載入失敗（HTTP ' + r.status + '）');
+        return r.json();
+      }).catch(err => { drugCache = null; throw err; });
+    }
+    return await drugCache;
+  };
+
   // ---------------------------------------------------------------- 圖表
 
   R['/figures-index'] = qs => {
@@ -724,12 +739,14 @@ function showView(v) {
   // 「總覽情境」：從總覽進來的考古題與影像不綁科別，一律顯示全部；
   // 知識庫與圖表需要子頁脈絡，所以這時候不給進。
   const globalView = (state.scope === 'global' || v === 'settings');
-  document.body.classList.toggle('no-aside', globalView);
+  // 複習頁不需要疾病主題清單，進來就收起側欄，版面留給題目
+  document.body.classList.toggle('no-aside', globalView || v === 'review');
   document.body.classList.toggle('on-overview', globalView);
   if (v === 'overview') loadPages();
   if (v === 'settings') loadSettings();
   if (v === 'notes') loadNotes();
   if (v === 'exams') initExams();
+  if (v === 'review') { initReview(); const bk = $('#rvBack'); if (bk) bk.hidden = true; }
   if (v === 'figs') loadFigures();
   if (v === 'imgs') loadImages();
   if (v === 'pubmed') setTimeout(() => $('#pmQ').focus(), 30);
@@ -2298,7 +2315,7 @@ function bindFigCards() {
 
 /* 從圖表分頁跳回原條目：切到知識庫、選好主題、捲到那張卡片並閃一下。
    topicId 由圖表索引直接帶過來，不必再打一次 API。 */
-async function jumpToEntry(entryId, topicId) {
+async function jumpToEntry(entryId, topicId, opts) {
   if (!topicId) { toast('找不到來源條目', true); return; }
   try {
     showView('kb');
@@ -2313,9 +2330,55 @@ async function jumpToEntry(entryId, topicId) {
       card.scrollIntoView({ block: 'center', behavior: 'smooth' });
       card.classList.add('flash');
       setTimeout(() => card.classList.remove('flash'), 1600);
+      // 從複習頁（藥物索引、題目的對應內文）跳過來時，暫時把這則標色，
+      // 藥物索引還會把藥名本身標出來；只存在畫面上，換主題或重新載入就消失，不寫進畫記
+      if (opts) markJumpTarget(card, opts.mark);
     }, here ? 30 : 500);
   } catch (err) { toast(err.message, true); }
 }
+
+function rvEscRe(w) { return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function clearJumpMarks() {
+  $$('.card.jump-target').forEach(c => c.classList.remove('jump-target'));
+  $$('mark.jump-hit').forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+}
+function markJumpTarget(card, word) {
+  clearJumpMarks();
+  card.classList.add('jump-target');
+  if (!word) return;
+  const re = new RegExp(rvEscRe(word) + 's?', 'ig');
+  const body = card.querySelector('.md') || card;
+  textNodes(body).map(x => x.n).forEach(tn => {
+    const t = tn.nodeValue;
+    re.lastIndex = 0;
+    if (!re.test(t)) return;
+    re.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, m;
+    while ((m = re.exec(t))) {
+      frag.appendChild(document.createTextNode(t.slice(last, m.index)));
+      const mk = document.createElement('mark');
+      mk.className = 'jump-hit';
+      mk.textContent = m[0];
+      frag.appendChild(mk);
+      last = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(t.slice(last)));
+    tn.replaceWith(frag);
+  });
+  const first = card.querySelector('mark.jump-hit');
+  // 條目可能很長（表格），等卡片捲動結束再把第一個標記捲到畫面中央
+  if (first) setTimeout(() => {
+    const r = first.getBoundingClientRect();
+    if (r.top < 60 || r.bottom > innerHeight - 20) first.scrollIntoView({ block: 'center' });
+  }, 800);
+}
+// 點側欄、分頁或其他卡片時把暫時標色收掉
+document.addEventListener('click', ev => {
+  if (!$('.card.jump-target')) return;
+  if (ev.target.closest('[data-jump]') || ev.target.closest('.card.jump-target')) return;
+  if (ev.target.closest('.card') || ev.target.closest('aside') || ev.target.closest('nav.tabs')) clearJumpMarks();
+});
 
 // 條目內文的「詳見」連結（md() 產生的 a.entry-link）
 document.addEventListener('click', ev => {
@@ -4532,3 +4595,726 @@ $('#pmReader').addEventListener('click', ev => {
   await refreshStatus();
   setInterval(refreshStatus, 4000);
 })();
+
+
+/* ================= 複習：練習（考古題／內文抽考／錯題本）＋藥物索引 =================
+   都只讀資料、進度存在這台裝置的瀏覽器（localStorage），
+   所以本機版和公開的唯讀版行為一樣，不需要登入，也不會寫回資料庫。 */
+const RV = { tab: 'quiz', mode: 'exam', qs: null, topicsAll: null, pages: null, quiz: null,
+             drugs: null, drugView: null, clozeSeen: new Set() };
+const rvStore = {
+  get(k, d) { try { const v = localStorage.getItem('rv.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('rv.' + k, JSON.stringify(v)); } catch (e) {} },
+};
+function rvShuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function rvHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+
+async function rvTopics() {
+  if (!RV.topicsAll) {
+    const [{ topics }, { pages }] = await Promise.all([api('/topics'), api('/pages')]);
+    RV.topicsAll = topics; RV.pages = pages;
+  }
+  return RV.topicsAll;
+}
+function rvTopic(id) { return (RV.topicsAll || []).find(t => t.id === id) || null; }
+function rvPageName(id) { return ((RV.pages || []).find(p => p.id === id) || {}).name || ''; }
+function rvTopicOptions(sel) {
+  const opts = (RV.topicsAll || []).slice().sort((a, b) => (a.page_id - b.page_id) || (a.sort - b.sort));
+  return (RV.pages || []).map(p => `<optgroup label="${esc(p.name)}">${opts.filter(t => t.page_id === p.id).map(t =>
+    `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('');
+}
+
+$$('.rv-tabs button').forEach(b => b.onclick = () => { RV.tab = b.dataset.rv; initReview(); });
+async function initReview() {
+  $$('.rv-tabs button').forEach(x => x.classList.toggle('active', x.dataset.rv === RV.tab));
+  $$('.rv-panel').forEach(p => p.classList.toggle('active', p.id === 'rv-' + RV.tab));
+  try {
+    await rvTopics();
+    if (RV.tab === 'quiz') rvQuizHome();
+    if (RV.tab === 'drugs') rvDrugsInit();
+  } catch (e) { toast(e.message, true); }
+}
+function rvBindJumps(root) {
+  $$('[data-jump]', root).forEach(a => a.onclick = ev => {
+    ev.preventDefault();
+    // 記住捲動位置，按「回到…」時回到原處
+    RV.backScroll = window.scrollY;
+    const from = RV.tab === 'drugs' ? '藥物索引' : '練習';
+    jumpToEntry(+a.dataset.jump, +a.dataset.jumptopic, { mark: a.dataset.mark || '' });
+    rvShowBack(from);
+  });
+}
+function rvShowBack(label) {
+  let b = $('#rvBack');
+  if (!b) {
+    b = document.createElement('button');
+    b.id = 'rvBack';
+    b.className = 'rv-back';
+    document.body.appendChild(b);
+  }
+  b.textContent = '← 回到' + label;
+  b.hidden = false;
+  b.onclick = () => {
+    b.hidden = true;
+    clearJumpMarks();
+    showView('review');
+    const y = RV.backScroll || 0;
+    setTimeout(() => window.scrollTo(0, y), 80);
+  };
+}
+
+/* ---------- 練習首頁 ---------- */
+function rvWrongCounts() {
+  return { exam: Object.keys(rvStore.get('wrong', {})).length,
+           cloze: Object.keys(rvStore.get('wrongCloze', {})).length };
+}
+async function rvQuestions() {
+  if (!RV.qs) RV.qs = (await api('/exam-questions?limit=5000')).questions || [];
+  return RV.qs;
+}
+function rvExamPool(scope) {
+  const qs = RV.qs || [];
+  if (scope === 'all') return qs.slice();
+  if (scope.startsWith('t:')) {
+    const tid = +scope.slice(2);
+    return qs.filter(q => (q.topics || []).some(t => t.topic_id === tid));
+  }
+  if (scope.startsWith('p:')) {
+    const pid = +scope.slice(2);
+    const tids = new Set((RV.topicsAll || []).filter(t => t.page_id === pid).map(t => t.id));
+    return qs.filter(q => (q.topics || []).some(t => tids.has(t.topic_id)));
+  }
+  return [];
+}
+async function rvQuizHome() {
+  const box = $('#rv-quiz');
+  if (RV.quiz && !RV.quiz.done) { rvQuizShow(); return; }
+  box.innerHTML = '<div class="empty-note">載入中…</div>';
+  await rvQuestions();
+  const wc = rvWrongCounts();
+  const st = rvStore.get('stats', { done: 0, correct: 0 });
+  box.innerHTML = `<div class="rv-home">
+    <div class="rv-modes">
+      <button data-mode="exam">考古題</button>
+      <button data-mode="cloze">內文抽考</button>
+      <button data-mode="wrong">錯題本（${wc.exam + wc.cloze}）</button>
+    </div>
+    <div id="rvModeBody"></div>
+    <div class="rv-stat">累計作答 <b>${st.done}</b> 題 · 答對率 <b>${st.done ? Math.round(st.correct * 100 / st.done) : 0}%</b>
+      · 錯題本：考古 <b>${wc.exam}</b>、抽考 <b>${wc.cloze}</b></div>
+  </div>`;
+  $$('[data-mode]', box).forEach(b => b.onclick = () => { RV.mode = b.dataset.mode; rvModeBody(); });
+  rvModeBody();
+}
+function rvModeBody() {
+  $$('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === RV.mode));
+  const body = $('#rvModeBody');
+  if (RV.mode === 'exam') {
+    const opts = [];
+    if (state.topicId && rvTopic(state.topicId)) opts.push([`t:${state.topicId}`, `目前主題：${rvTopic(state.topicId).name}`]);
+    if (state.pageId) opts.push([`p:${state.pageId}`, `目前科別：${rvPageName(state.pageId)}`]);
+    (RV.pages || []).forEach(p => { if (p.id !== state.pageId) opts.push([`p:${p.id}`, `科別：${p.name}`]); });
+    opts.push(['all', '全部考古題']);
+    const topicsWithQ = new Set((RV.qs || []).flatMap(q => (q.topics || []).map(t => t.topic_id)));
+    (RV.topicsAll || []).filter(t => topicsWithQ.has(t.id) && t.id !== state.topicId)
+      .forEach(t => opts.push([`t:${t.id}`, `主題：${t.name}`]));
+    const last = rvStore.get('lastScope', opts[0][0]);
+    body.innerHTML = `<div class="rv-form">
+        <label>範圍<select id="rvScope">${opts.map(([v, l]) =>
+          `<option value="${esc(v)}"${v === last ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+        <label>題數<select id="rvN">${[10, 20, 50, 0].map(n => `<option value="${n}">${n ? n + ' 題' : '全部'}</option>`).join('')}</select></label>
+        <label>順序<select id="rvOrder"><option value="rand">隨機</option><option value="seq">依年份</option></select></label>
+        <button class="primary rv-go" id="rvStart">開始</button>
+      </div>`;
+    const upd = () => { $('#rvStart').disabled = !rvExamPool($('#rvScope').value).length; };
+    $('#rvScope').onchange = upd; upd();
+    $('#rvStart').onclick = () => {
+      const scope = $('#rvScope').value; rvStore.set('lastScope', scope);
+      let pool = rvExamPool(scope);
+      if ($('#rvOrder').value === 'rand') rvShuffle(pool);
+      else pool.sort((a, b) => (b.roc_year || b.year || 0) - (a.roc_year || a.year || 0) || (a.number || 0) - (b.number || 0));
+      const n = +$('#rvN').value; if (n) pool = pool.slice(0, n);
+      rvStartSession('exam', pool.map(q => ({ type: 'exam', q })));
+    };
+  } else if (RV.mode === 'cloze') {
+    const cur = state.topicId || rvStore.get('clozeTopic', null);
+    body.innerHTML = `<div class="rv-form"><label>主題<select id="rvClozeTopic"><option value="">選一個主題…</option>${rvTopicOptions(cur)}</select></label>
+        <button class="primary rv-go" id="rvClozeGo" disabled>出 10 題</button></div>
+      <div class="muted small" id="rvClozeN"></div>`;
+    const sel = $('#rvClozeTopic');
+    const check = async () => {
+      const tid = +sel.value; $('#rvClozeGo').disabled = true;
+      if (!tid) { $('#rvClozeN').textContent = ''; return; }
+      rvStore.set('clozeTopic', tid);
+      $('#rvClozeN').textContent = '整理題目中…';
+      const items = await rvClozeItems(tid);
+      $('#rvClozeN').textContent = items.length ? '' : '這個主題的內文不夠出題';
+      $('#rvClozeGo').disabled = !items.length;
+    };
+    sel.onchange = check; check();
+    $('#rvClozeGo').onclick = async () => {
+      $('#rvClozeGo').disabled = true; $('#rvClozeN').textContent = '出題中…';
+      const list = await rvMakeQuiz(+sel.value, 10);
+      rvStartSession('cloze', list.map(c => ({ type: 'cloze', c })), +sel.value);
+    };
+  } else {
+    const wc = rvWrongCounts();
+    body.innerHTML = `<div class="rv-form"><label>範圍<select id="rvWrongScope">
+        <option value="both">全部</option>
+        <option value="exam">只有考古題</option><option value="cloze">只有內文抽考</option></select></label>
+        <label>題數<select id="rvWN">${[10, 20, 0].map(n => `<option value="${n}">${n ? n + ' 題' : '全部'}</option>`).join('')}</select></label>
+        <button class="primary rv-go" id="rvWrongGo"${wc.exam + wc.cloze ? '' : ' disabled'}>開始</button></div>
+      ${wc.exam + wc.cloze ? '<div class="rv-actions"><a href="#" id="rvClearWrong" class="small">清空錯題本</a></div>' : ''}`;
+    $('#rvWrongGo').onclick = () => {
+      const sc = $('#rvWrongScope').value;
+      const we = rvStore.get('wrong', {}), wz = rvStore.get('wrongCloze', {});
+      let list = [];
+      if (sc !== 'cloze') list = list.concat((RV.qs || []).filter(q => we[q.id]).map(q => ({ type: 'exam', q })));
+      if (sc !== 'exam') list = list.concat(Object.values(wz).map(c => ({ type: 'cloze', c })));
+      rvShuffle(list);
+      const n = +$('#rvWN').value; if (n) list = list.slice(0, n);
+      rvStartSession('wrong', list);
+    };
+    const cw = $('#rvClearWrong');
+    if (cw) cw.onclick = ev => { ev.preventDefault(); if (confirm('清空錯題本（考古與抽考都會清掉）？')) { rvStore.set('wrong', {}); rvStore.set('wrongCloze', {}); rvQuizHome(); } };
+  }
+}
+function rvStartSession(mode, list, topic) {
+  RV.quiz = { mode, topic, list, i: 0, picked: null, results: [], done: false };
+  rvQuizShow();
+}
+
+/* ---------- 內文抽考：出題 ---------- */
+const RV_DRUG_FALLBACK = ['prednisone', 'rituximab', 'methotrexate', 'azathioprine', 'cyclophosphamide',
+  'vancomycin', 'ceftriaxone', 'metronidazole', 'aspirin', 'heparin', 'warfarin', 'insulin', 'amiodarone', 'furosemide'];
+const rvClozeCache = new Map();
+function rvSpanKind(t) {
+  if (/\d/.test(t) && /[A-Z]{2,}/.test(t) && !/IU/.test(t)) return null;   // 3,4-DAP 這類名稱不當數字題
+  if (/\d/.test(t)) return 'num';
+  if (/^[a-z][a-z0-9\-]+( [a-z][a-z0-9\-]+)?$/.test(t) && t.length >= 4) return 'drug';
+  if (/[一-鿿]/.test(t) && t.length >= 2 && t.length <= 16 && !/[：:，。]/.test(t)) return 'term';
+  return null;
+}
+async function rvClozeItems(tid) {
+  if (rvClozeCache.has(tid)) return rvClozeCache.get(tid);
+  const { sections } = await api('/knowledge?topic_id=' + tid);
+  const entries = [];
+  (sections || []).forEach(s => (s.sources || []).forEach(src => (src.entries || []).forEach(e => entries.push(e))));
+  const lines = [];               // {entry, kind:'text'|'row', text|head+cells}
+  entries.forEach(e => {
+    let head = null;
+    String(e.summary_md || '').split('\n').forEach(raw => {
+      let line = raw.trim();
+      if (!line) { head = null; return; }
+      if (/^\|/.test(line)) {
+        const cells = line.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+        if (cells.every(c => /^:?-{2,}:?$/.test(c))) return;
+        if (!head) { head = cells; return; }
+        if (cells.join('').includes('**')) lines.push({ entry: e, kind: 'row', head, cells });
+        return;
+      }
+      head = null;
+      if (/^※/.test(line)) return;                           // 查證備註不出題
+      line = line.replace(/^[-*]\s+|^\d+\.\s+|^>\s*/, '');
+      if (!line.includes('**')) return;
+      const parts = line.length > 160 ? line.split(/(?<=[。；])/) : [line];
+      parts.forEach(p => { if (p.includes('**') && p.replace(/\*/g, '').trim().length > 8) lines.push({ entry: e, kind: 'text', text: p.trim() }); });
+    });
+  });
+  // 同主題的同類詞當干擾選項
+  const pool = { num: new Set(), drug: new Set(), term: new Set() };
+  const spanRe = /\*\*([^*\n]+)\*\*/g;
+  const srcOf = L => L.kind === 'row' ? L.cells.join(' | ') : L.text;
+  // 「**標題**：」這種段落小標不拿來出題，也不當干擾選項
+  const isLabel = (s, m) => /^[：:]/.test(s.slice(m.index + m[0].length).trimStart());
+  lines.forEach(L => { let m; const s = srcOf(L); while ((m = spanRe.exec(s))) { const k = rvSpanKind(m[1].trim()); if (k && !(k === 'term' && isLabel(s, m))) pool[k].add(m[1].trim()); } });
+  const items = [];
+  lines.forEach(L => {
+    const s = srcOf(L); const seenAns = new Set(); let m;
+    const re = /\*\*([^*\n]+)\*\*/g;
+    while ((m = re.exec(s))) {
+      const ans = m[1].trim(), kind = rvSpanKind(ans);
+      if (!kind || seenAns.has(ans)) continue;
+      if (kind === 'term' && isLabel(s, m)) continue;
+      if (s.replace(/\*/g, '').replace(ans, '').trim().length < 12) continue;   // 句子太短，看不出在問什麼
+      seenAns.add(ans);
+      const opts = rvDistractors(ans, kind, pool[kind]);
+      if (opts.length < 3) continue;
+      items.push({ L, ans, kind, distract: opts,
+                   id: L.entry.id + ':' + rvHash(s) + ':' + rvHash(ans) });
+    }
+  });
+  rvClozeCache.set(tid, items);
+  return items;
+}
+function rvNumShape(x) { return x.replace(/\d+(?:\.\d+)?/g, '#'); }
+function rvNumUnit(x) { return x.replace(/[\d.,\s–\-~>≤≥<×%±/]+/g, '').toLowerCase(); }
+function rvDistractors(ans, kind, poolSet) {
+  const others = [...poolSet].filter(x => x !== ans && x.toLowerCase() !== ans.toLowerCase());
+  if (kind === 'num') {
+    const shape = rvNumShape(ans), unit = rvNumUnit(ans);
+    const same = rvShuffle(others.filter(x => rvNumShape(x) === shape));
+    const unitM = rvShuffle(others.filter(x => rvNumShape(x) !== shape && rvNumUnit(x) === unit));
+    const out = [...new Set(same.concat(unitM))].slice(0, 3);
+    // 不夠的話把原數字乘上倍數造出干擾選項
+    for (const f of rvShuffle([0.5, 2, 1.5, 3, 0.25, 4, 5, 10])) {
+      if (out.length >= 3) break;
+      const v = ans.replace(/\d+(?:\.\d+)?/g, d => {
+        const n = parseFloat(d) * f;
+        return String(n >= 10 ? Math.round(n) : Math.round(n * 10) / 10);
+      });
+      if (v !== ans && !out.includes(v)) out.push(v);
+    }
+    return out.slice(0, 3);
+  }
+  let out = rvShuffle(others).slice(0, 3);
+  if (kind === 'drug' && out.length < 3)
+    out = out.concat(rvShuffle(RV_DRUG_FALLBACK.filter(d => d !== ans && !out.includes(d)))).slice(0, 3);
+  return out;
+}
+function rvPickCloze(items, n) {
+  let fresh = items.filter(it => !RV.clozeSeen.has(it.id));
+  if (fresh.length < n) { items.forEach(it => RV.clozeSeen.delete(it.id)); fresh = items.slice(); }
+  // 數字、藥名、關鍵詞交錯出，同一則條目最多 2 題
+  const by = { num: rvShuffle(fresh.filter(i => i.kind === 'num')), drug: rvShuffle(fresh.filter(i => i.kind === 'drug')),
+               term: rvShuffle(fresh.filter(i => i.kind === 'term')) };
+  const order = ['num', 'drug', 'num', 'term', 'num', 'drug', 'term', 'num', 'drug', 'num'];
+  const out = [], perEntry = new Map();
+  let guard = 0;
+  while (out.length < n && guard++ < 500) {
+    const k = order[out.length % order.length];
+    const src = by[k].length ? by[k] : (by.num.length ? by.num : by.drug.length ? by.drug : by.term);
+    if (!src.length) break;
+    const it = src.shift();
+    const c = perEntry.get(it.L.entry.id) || 0;
+    if (c >= 2) continue;
+    perEntry.set(it.L.entry.id, c + 1);
+    out.push(it);
+  }
+  out.forEach(it => RV.clozeSeen.add(it.id));
+  return out.map(rvClozeToQ);
+}
+function rvBlankHtml(src, ans, reveal) {
+  let out = '', i = 0; const re = /\*\*([^*\n]+)\*\*/g; let m;
+  const plain = s => {
+    let h = esc(s);
+    // 答案若在同一句以非粗體再出現一次，也一起遮掉，免得直接看到答案
+    if (/[a-z]/i.test(ans) && ans.length >= 4) {
+      const r = new RegExp(ans.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+      h = h.replace(r, reveal ? '<span class="rv-cz on">$&</span>' : '<span class="rv-cz">（？）</span>');
+    }
+    return h;
+  };
+  while ((m = re.exec(src))) {
+    out += plain(src.slice(i, m.index));
+    const inner = m[1].trim();
+    if (inner === ans) out += reveal ? `<span class="rv-cz on">${esc(inner)}</span>` : '<span class="rv-cz">（？）</span>';
+    else out += `<b>${esc(inner)}</b>`;
+    i = m.index + m[0].length;
+  }
+  return out + plain(src.slice(i));
+}
+function rvClozeToQ(it) {
+  const L = it.L, e = L.entry;
+  const mk = reveal => L.kind === 'row'
+    ? `<table class="rv-ctable"><tr>${L.head.map(h => `<th>${rvBlankHtml(h, '\u0000', true)}</th>`).join('')}</tr>
+       <tr>${L.cells.map(x => `<td>${rvBlankHtml(x, it.ans, reveal)}</td>`).join('')}</tr></table>`
+    : `<div class="rv-ctext">${rvBlankHtml(L.text, it.ans, reveal)}</div>`;
+  return { id: it.id, entry_id: e.id, topic_id: e.topic_id, section: stripOrdinal(e.section || ''), cat: e.category,
+           kind: it.kind, qhtml: mk(false), ahtml: mk(true), answer: it.ans,
+           options: rvShuffle([it.ans].concat(it.distract)) };
+}
+
+/* ---------- 內文抽考：依分類出「下列何者是…」題 ----------
+   每個分類各自出題，題型兩種：
+   (1) 條列辨識：正解是本主題該分類條目裡的一個條列項目，
+       干擾選項取自同科其他主題同分類的條列，而且必須是本主題全文完全沒提到的，避免「其實也對」。
+   (2) 挖空：沿用上面的粗體挖空（數字、藥名、關鍵詞），也記錄它來自哪個分類。
+   10 題在本主題有內容的分類之間輪流分配，不會集中在數字題。 */
+const RV_CAT_STEM = {
+  definition: '下列何者符合「{t}」的定義或特徵？',
+  epidemiology: '下列關於「{t}」流行病學的敘述，何者出自本章？',
+  etiology: '下列何者是「{t}」的病因或致病機轉？',
+  risk_factors: '下列何者是「{t}」的危險因子？',
+  clinical: '下列何者是「{t}」的臨床表現？',
+  diagnosis: '診斷「{t}」時，下列何者是書中提到的檢查或發現？',
+  differential: '下列何者是「{t}」需要鑑別的疾病？',
+  treatment: '下列何者是「{t}」的治療或處置？',
+  prognosis: '下列關於「{t}」預後的敘述，何者出自本章？',
+  complications: '下列何者是「{t}」的併發症？',
+  prevention: '下列何者是「{t}」的預防措施？',
+};
+const rvEntryCache = new Map();
+async function rvTopicEntries(tid) {
+  if (!rvEntryCache.has(tid)) {
+    rvEntryCache.set(tid, api('/knowledge?topic_id=' + tid).then(({ sections }) => {
+      const out = [];
+      (sections || []).forEach(s => (s.sources || []).forEach(src => (src.entries || []).forEach(e => out.push(e))));
+      return out;
+    }).catch(err => { rvEntryCache.delete(tid); throw err; }));
+  }
+  return rvEntryCache.get(tid);
+}
+function rvPlainText(s) {
+  return String(s || '').replace(/\*\*|__|`/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\s+/g, ' ').trim();
+}
+function rvListItems(entries) {
+  const out = [];
+  entries.forEach(e => {
+    String(e.summary_md || '').split('\n').forEach(raw => {
+      const m = raw.match(/^\s*(?:[-*]|\d+\.)\s+(.+)$/);
+      if (!m) return;
+      let t = rvPlainText(m[1]);
+      if (/^※/.test(t)) return;
+      // 只收「名詞型」的短條列（疾病、檢查、藥物、症狀）：
+      // 有冒號、分號、逗號的多半是「條件：做法」或半句話，單獨拿出來當選項看不懂
+      t = t.replace(/[。．.]$/, '');
+      if (t.length < 3 || t.length > 32) return;
+      if (/[：:；;，,]/.test(t)) return;
+      if (/^(先|若|可|要|不|沒|再|之後|通常|多數|少數|有些|約|常|也|但|和|與|或|是|會|需|應|以|在|從|把|讓|用)/.test(t)) return;
+      if (/[（(]$/.test(t)) return;
+      out.push({ entry: e, cat: e.category, text: t });
+    });
+  });
+  return out;
+}
+function rvKeyOf(t) {
+  // 判斷「干擾選項是否其實也出現在本主題」用的關鍵字：最長的中文片段（≥3 字）或英文字（≥5 字母）
+  const cjk = (t.match(/[一-鿿]{3,}/g) || []).sort((a, b) => b.length - a.length)[0];
+  const en = (t.match(/[A-Za-z][A-Za-z\-]{4,}/g) || []).sort((a, b) => b.length - a.length)[0];
+  return [cjk, en && en.toLowerCase()].filter(Boolean);
+}
+async function rvMakeQuiz(tid, n) {
+  const mine = await rvTopicEntries(tid);
+  const t = rvTopic(tid);
+  const fullText = rvPlainText(mine.map(e => e.summary_md).join('\n')).toLowerCase();
+  // 同科其他主題（最多 8 個）當干擾選項來源；同科不夠就用全站
+  let others = (RV.topicsAll || []).filter(x => x.id !== tid && t && x.page_id === t.page_id);
+  if (others.length < 3) others = (RV.topicsAll || []).filter(x => x.id !== tid);
+  others = rvShuffle(others.slice()).slice(0, 8);
+  const otherEntries = (await Promise.all(others.map(o => rvTopicEntries(o.id).catch(() => [])))).flat();
+  const myItems = rvListItems(mine);
+  const myTexts = new Set(myItems.map(i => i.text));
+  const foreign = rvListItems(otherEntries).filter(i =>
+    !myTexts.has(i.text) && rvKeyOf(i.text).length && !rvKeyOf(i.text).some(k => fullText.includes(k.toLowerCase())));
+  const listQ = {};
+  myItems.forEach(it => {
+    const pool = foreign.filter(f => f.cat === it.cat);
+    const alt = pool.length >= 3 ? pool : foreign;
+    if (alt.length < 3) return;
+    const lenOk = alt.filter(f => Math.abs(f.text.length - it.text.length) <= Math.max(12, it.text.length));
+    const ds = [...new Set(rvShuffle((lenOk.length >= 3 ? lenOk : alt).slice()).map(f => f.text))].slice(0, 3);
+    if (ds.length < 3) return;
+    // 題幹用條目的節名而不是主題名：一個主題常收好幾個疾病（MG 章也有 LEMS、CMS），用節名才不會問錯
+    const sec = stripOrdinal(it.entry.section || '');
+    const stem = `「${sec || (t ? t.name : '本主題')}」一節列出的項目包括下列哪一項？`;
+    const q = { id: 'L' + it.entry.id + ':' + rvHash(it.text), entry_id: it.entry.id, topic_id: tid, section: sec,
+                cat: it.cat, kind: 'list', prompt: '', answer: it.text, options: rvShuffle([it.text].concat(ds)),
+                qhtml: `<div class="rv-ctext">${esc(stem)}</div>`,
+                ahtml: `<div class="rv-ctext">${esc(stem)}</div><div class="muted small">出自：${esc(sec)}</div>` };
+    (listQ[it.cat] = listQ[it.cat] || []).push(q);
+  });
+  const clozeQ = {};
+  (await rvClozeItems(tid)).forEach(it => {
+    (clozeQ[it.L.entry.category] = clozeQ[it.L.entry.category] || []).push(it);
+  });
+  // 依分類輪流：每輪每個分類出一題，條列題與挖空題交替
+  const cats = rvShuffle(Object.keys(RV_CAT_STEM).filter(c => (listQ[c] || []).length || (clozeQ[c] || []).length));
+  cats.forEach(c => { rvShuffle(listQ[c] || []); rvShuffle(clozeQ[c] || []); });
+  const out = [], used = new Set(), perEntry = new Map();
+  let round = 0;
+  while (out.length < n && round < 50) {
+    let added = false;
+    for (const c of cats) {
+      if (out.length >= n) break;
+      const preferList = (round + cats.indexOf(c)) % 3 !== 2;          // 約三分之二條列題、三分之一挖空題
+      const tryList = () => { const L = listQ[c] || []; while (L.length) { const q = L.shift(); if (!used.has(q.id) && !RV.clozeSeen.has(q.id)) return q; } return null; };
+      const tryCloze = () => {
+        const L = clozeQ[c] || [];
+        while (L.length) {
+          const it = L.shift();
+          if (RV.clozeSeen.has(it.id) || (perEntry.get(it.L.entry.id) || 0) >= 2) continue;
+          perEntry.set(it.L.entry.id, (perEntry.get(it.L.entry.id) || 0) + 1);
+          return rvClozeToQ(it);
+        }
+        return null;
+      };
+      const q = preferList ? (tryList() || tryCloze()) : (tryCloze() || tryList());
+      if (q) { out.push(q); used.add(q.id); added = true; }
+    }
+    if (!added) {
+      if (RV.clozeSeen.size) { RV.clozeSeen.clear(); round++; continue; }   // 題目出完一輪就重新開放
+      break;
+    }
+    round++;
+  }
+  out.forEach(q => RV.clozeSeen.add(q.id));
+  return rvShuffle(out);
+}
+
+/* ---------- 作答畫面（考古題與抽考共用） ---------- */
+function rvItemId(it) { return it.type === 'exam' ? 'q' + it.q.id : 'c' + it.c.id; }
+function rvItemCorrect(it, picked) {
+  if (it.type === 'exam') { const a = rvAnswerSet(it.q.answer); return !a.size || a.has(picked); }
+  return picked === it.c.answer;
+}
+function rvAnswerSet(ans) { return new Set(String(ans || '').toUpperCase().match(/[A-E]/g) || []); }
+function rvQuizShow() {
+  const Z = RV.quiz, box = $('#rv-quiz');
+  if (!Z.list.length) { box.innerHTML = '<div class="empty-note">沒有可出的題目。</div><div class="rv-actions"><button id="rvBackHome">回到練習</button></div>'; $('#rvBackHome').onclick = () => { RV.quiz = null; rvQuizHome(); }; return; }
+  if (Z.i >= Z.list.length) { rvQuizEnd(); return; }
+  const it = Z.list[Z.i], answered = Z.picked != null;
+  const right = Z.results.filter(r => r.ok).length;
+  let head, stem, opts;
+  if (it.type === 'exam') {
+    const q = it.q, ans = rvAnswerSet(q.answer);
+    head = ['考古題', (q.roc_year || q.year) ? esc(examTag(q)) : '', q.subject ? esc(String(q.subject).slice(0, 30)) : '',
+            q.number ? `第 ${q.number} 題` : ''].filter(Boolean).join(' · ');
+    stem = `<div class="q-stem">${esc(q.stem)}</div>${renderQuestionImages(Object.assign({}, q))}`;
+    opts = (q.options || []).map((o, i) => {
+      const L = String.fromCharCode(65 + i);
+      const cls = !answered ? '' : (!ans.size || ans.has(L)) ? 'correct' : (Z.picked === L ? 'wrong' : '');
+      return `<li><button class="rv-opt ${cls}" data-opt="${L}" ${answered ? 'disabled' : ''}><b>${L}</b><span>${esc(o)}</span></button></li>`;
+    }).join('');
+  } else {
+    const c = it.c, t = rvTopic(c.topic_id);
+    head = ['內文抽考', t ? esc(t.name) : '', c.cat ? esc(catName(c.cat)) : ''].filter(Boolean).join(' · ');
+    stem = `<div class="rv-cq">${answered ? c.ahtml : c.qhtml}</div>
+      ${c.prompt === '' ? '' : `<div class="muted small">${esc(c.prompt || '（？）處應填入什麼？')}</div>`}`;
+    opts = c.options.map((o, i) => {
+      const L = String.fromCharCode(65 + i);
+      const cls = !answered ? '' : o === c.answer ? 'correct' : (Z.picked === o ? 'wrong' : '');
+      return `<li><button class="rv-opt ${cls}" data-opt="${esc(o)}" ${answered ? 'disabled' : ''}><b>${L}</b><span>${esc(o)}</span></button></li>`;
+    }).join('');
+  }
+  box.innerHTML = `<div class="rv-quiz">
+    <div class="rv-progress"><span>第 ${Z.i + 1} / ${Z.list.length} 題</span><span>答對 ${right}</span><a href="#" id="rvQuit">結束練習</a></div>
+    <div class="rv-bar"><i style="width:${(Z.i / Z.list.length) * 100}%"></i></div>
+    <div class="q-card rv-q"><div class="qh">${head}</div>${stem}
+      <ul class="rv-opts">${opts}</ul>
+      ${answered ? rvFeedback(it) : ''}</div>
+    ${answered ? `<div class="rv-actions"><button class="primary" id="rvNext">${Z.i + 1 < Z.list.length ? '下一題 →' : '看結果'}</button></div>` : ''}
+  </div>`;
+  $('#rvQuit').onclick = ev => { ev.preventDefault(); rvQuizEnd(); };
+  $$('.rv-opt', box).forEach(b => b.onclick = () => rvPick(b.dataset.opt));
+  const nx = $('#rvNext'); if (nx) nx.onclick = () => { Z.i++; Z.picked = null; rvQuizShow(); window.scrollTo(0, 0); };
+  rvBindJumps(box);
+  $$('[data-qimgview]', box).forEach(im => im.onclick = () => {
+    const lb = document.createElement('div'); lb.className = 'lightbox open';
+    lb.innerHTML = `<img src="${im.src}" alt="">`; lb.onclick = () => lb.remove(); document.body.appendChild(lb);
+  });
+  $$('[data-qimgdel]', box).forEach(b => b.remove());
+}
+function rvFeedback(it) {
+  const Z = RV.quiz, ok = rvItemCorrect(it, Z.picked);
+  if (it.type === 'cloze') {
+    return `<div class="rv-feedback ${ok ? 'ok' : 'bad'}"><b>${ok ? '答對了' : '答錯了'}</b>　正確答案：${esc(it.c.answer)}</div>
+      <div class="rv-ents"><a href="#" class="rv-ent" data-jump="${it.c.entry_id}" data-jumptopic="${it.c.topic_id}">
+        <span class="rv-ent-sec">看原條目：${esc(it.c.section || '（未命名章節）')}</span></a></div>`;
+  }
+  const q = it.q, ans = rvAnswerSet(q.answer), ents = (q.entries || []).slice(0, 5);
+  return `<div class="rv-feedback ${ok ? 'ok' : 'bad'}"><b>${ok ? '答對了' : '答錯了'}</b>　正確答案：${ans.size ? esc(q.answer) : '送分（任何選項都算對）'}</div>
+    ${q.explanation ? `<div class="rv-expl md">${md(q.explanation)}</div>` : ''}
+    ${ents.length ? `<div class="rv-ents"><div class="muted small">對應的內文（點了跳過去讀，回到「複習」會接著這一題）</div>
+      ${ents.map(e => `<a href="#" class="rv-ent" data-jump="${e.entry_id}" data-jumptopic="${e.topic_id}">
+        <span class="rv-ent-sec">${esc(stripOrdinal(e.section) || '（未命名章節）')}</span>
+        <span class="muted small">${esc(e.topic_name || '')}${e.category ? ' · ' + esc(catName(e.category)) : ''}</span>
+        ${e.excerpt ? `<span class="rv-ent-ex">${esc(e.excerpt)}</span>` : ''}</a>`).join('')}</div>`
+      : '<div class="muted small">這題還沒有連到知識庫的條目。</div>'}`;
+}
+function rvPick(val) {
+  const Z = RV.quiz, it = Z.list[Z.i];
+  if (Z.picked != null) return;
+  Z.picked = val;
+  const ok = rvItemCorrect(it, val);
+  Z.results.push({ it, ok });
+  const st = rvStore.get('stats', { done: 0, correct: 0 });
+  st.done++; if (ok) st.correct++; rvStore.set('stats', st);
+  if (it.type === 'exam') {
+    const w = rvStore.get('wrong', {});
+    if (!ok) w[it.q.id] = { n: ((w[it.q.id] || {}).n || 0) + 1, t: Date.now() };
+    else if (Z.mode === 'wrong') delete w[it.q.id];
+    rvStore.set('wrong', w);
+  } else {
+    const w = rvStore.get('wrongCloze', {});
+    if (!ok) w[it.c.id] = Object.assign({}, it.c, { n: ((w[it.c.id] || {}).n || 0) + 1, t: Date.now() });
+    else if (Z.mode === 'wrong') delete w[it.c.id];
+    rvStore.set('wrongCloze', w);
+  }
+  rvQuizShow();
+}
+function rvQuizEnd() {
+  const Z = RV.quiz; Z.done = true;
+  const n = Z.results.length, ok = Z.results.filter(r => r.ok).length;
+  const bad = Z.results.filter(r => !r.ok).map(r => r.it);
+  const line = it => it.type === 'exam'
+    ? `考古 ${esc(examTag(it.q))} 第 ${it.q.number || '?'} 題：${esc(String(it.q.stem).slice(0, 50))}…`
+    : `抽考 ${esc(it.c.section)}：答案 ${esc(it.c.answer)}`;
+  $('#rv-quiz').innerHTML = `<div class="rv-home">
+    <h2>練習結果</h2>
+    <div class="rv-score">${n ? Math.round(ok * 100 / n) : 0}<small>%</small></div>
+    <p>作答 ${n} 題，答對 ${ok} 題。${bad.length && Z.mode !== 'wrong' ? `答錯的 ${bad.length} 題已收進錯題本。` : ''}</p>
+    ${bad.length ? `<ul class="rv-badlist">${bad.map(it => `<li>${line(it)}</li>`).join('')}</ul>` : ''}
+    <div class="rv-actions">
+      ${Z.mode === 'cloze' ? '<button class="primary" id="rvMore">再出 10 題</button>' : ''}
+      <button${Z.mode === 'cloze' ? '' : ' class="primary"'} id="rvAgain">回到練習</button></div>
+  </div>`;
+  $('#rvAgain').onclick = () => { RV.quiz = null; rvQuizHome(); };
+  const more = $('#rvMore');
+  if (more) more.onclick = async () => {
+    const list = await rvMakeQuiz(Z.topic, 10);
+    rvStartSession('cloze', list.map(c => ({ type: 'cloze', c })), Z.topic);
+  };
+}
+
+/* ---------- 藥物索引：依藥理類別分組 ---------- */
+async function rvDrugsInit() {
+  const box = $('#rv-drugs');
+  if (!RV.drugs) {
+    box.innerHTML = '<div class="empty-note">載入藥物索引…（第一次約 3 MB）</div>';
+    const d = await api('/review/drugs');
+    const classes = (d.classes || []).concat([{ key: '_none', name: '其他（未分類）', group: '其他', terms: [] }]);
+    const byCls = new Map(classes.map(c => [c.key, []]));
+    (d.drugs || []).forEach(x => byCls.get(x.cls || '_none').push(x));
+    byCls.forEach(lst => lst.sort((a, b) => (b.term - a.term) || (b.n_topics - a.n_topics) || a.name.localeCompare(b.name)));
+    RV.drugs = { list: d.drugs || [], classes, byCls, groups: [...new Set((d.groups || []).concat(['其他']))] };
+  }
+  box.innerHTML = `<div class="rv-drugs">
+    <div class="rv-dside">
+      <input id="rvDrugQ" placeholder="搜尋藥名或類別" autocomplete="off">
+      <div class="rv-dlist" id="rvDrugList"></div>
+    </div>
+    <div class="rv-dmain" id="rvDrugMain"><div class="empty-note">左邊依藥理類別排列，點類別看同類藥物各自出現在哪些章節；也可以直接搜尋藥名。<br>藥名取自條目裡的粗體英文藥名與內建的分類表，再到全文比對出現位置。</div></div>
+  </div>`;
+  $('#rvDrugQ').oninput = debounce(rvDrugList, 150);
+  rvDrugList();
+  if (RV.drugView) RV.drugView.cls ? rvShowClass(RV.drugView.cls, true) : rvShowDrug(RV.drugView.drug, true);
+}
+function rvDrugList() {
+  const D = RV.drugs, q = $('#rvDrugQ').value.trim().toLowerCase();
+  const el = $('#rvDrugList');
+  if (q) {
+    const cls = D.classes.filter(c => c.name.toLowerCase().includes(q) || (c.terms || []).some(t => t.includes(q)));
+    const drugs = D.list.filter(d => d.name.includes(q))
+      .sort((a, b) => (a.name.startsWith(q) ? 0 : 1) - (b.name.startsWith(q) ? 0 : 1) || b.n_topics - a.n_topics).slice(0, 200);
+    el.innerHTML = (cls.length ? `<div class="rv-dgh">類別</div>${cls.map(c =>
+        `<button class="rv-dcls" data-cls="${c.key}">${esc(c.name)}</button>`).join('')}` : '')
+      + `<div class="rv-dgh">藥名</div>` + (drugs.length ? drugs.map(d =>
+        `<button class="rv-dchip" data-drug="${esc(d.name)}">${esc(rvCap(d.name))}</button>`).join('') : '<div class="muted small">沒有符合的藥名</div>');
+  } else {
+    el.innerHTML = D.groups.map(g => {
+      const cs = D.classes.filter(c => c.group === g && (D.byCls.get(c.key) || []).length);
+      if (!cs.length) return '';
+      return `<div class="rv-dgh">${esc(g)}</div>` + cs.map(c =>
+        `<button class="rv-dcls${RV.drugView && RV.drugView.cls === c.key ? ' active' : ''}" data-cls="${c.key}">${esc(c.name)}</button>`).join('');
+    }).join('');
+  }
+  $$('[data-cls]', el).forEach(b => b.onclick = () => rvShowClass(b.dataset.cls));
+  $$('[data-drug]', el).forEach(b => b.onclick = () => rvShowDrug(b.dataset.drug));
+}
+// 藥名首字大寫；NSAID、PPI、SGLT2 這類縮寫總稱整個大寫
+const RV_ABBR = new Set(['nsaid', 'ppi', 'arb', 'ssri', 'snri', 'tca', 'doac', 'lmwh', 'sglt2', 'glp-1',
+  'ics', 'laba', 'lama', 'nrti', 'nnrti', 'dmard', 'ivig', 'ace inhibitor']);
+function rvCap(n) {
+  const s = String(n || '');
+  if (RV_ABBR.has(s)) return s === 'ace inhibitor' ? 'ACE inhibitor' : s.toUpperCase();
+  if (s === 'anti-tnf') return 'Anti-TNF';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+/* 用藥總表：同一類的每個藥，在各主題寫到的劑量。
+   劑量是後端從「藥名後面緊接著的數字＋單位」抓出來的（review.py），
+   使用時機用主題＋段落名稱，再附上同一句裡藥名前面的情境。超過 20 列就拆成下一張。 */
+function rvDoseTables(members) {
+  const rows = [];
+  // 同一個藥在同一則條目只留一列：多個劑量合併在同一格，
+  // 「1 g」被「1 g（5–7 天）」包含這種只留較完整的那個
+  members.filter(d => !d.term).forEach(d => {
+    const seenDose = new Set();
+    d.refs.forEach(r => {
+      let ds = (r.doses || []).map(x => x.dose);
+      if (!ds.length) return;
+      ds = ds.filter((a, i) => !ds.some((b, j) => j !== i && b.length > a.length && b.includes(a)));
+      ds = [...new Set(ds)];
+      const key = r.topic_id + '|' + ds.join('；');
+      if (seenDose.has(key)) return;               // 同主題另一則條目寫了一模一樣的劑量也只留一列
+      seenDose.add(key);
+      rows.push({ drug: d.name, r, x: { dose: ds.join('；'), ctx: (r.doses[0] || {}).ctx || '' } });
+    });
+  });
+  if (!rows.length) return '<div class="muted small rv-nodose">這一類在內文裡沒有寫到具體劑量。</div>';
+  // 依藥分組，每張表最多 20 列；單一藥超過 20 列就自己拆
+  const tables = []; let cur = [];
+  let i = 0;
+  while (i < rows.length) {
+    let j = i; while (j < rows.length && rows[j].drug === rows[i].drug) j++;
+    const grp = rows.slice(i, j);
+    if (cur.length && cur.length + grp.length > 20) { tables.push(cur); cur = []; }
+    for (let k = 0; k < grp.length; k += 20) {
+      const part = grp.slice(k, k + 20);
+      if (cur.length + part.length > 20) { tables.push(cur); cur = []; }
+      cur = cur.concat(part);
+    }
+    i = j;
+  }
+  if (cur.length) tables.push(cur);
+  const one = (list, idx) => {
+    let prev = '';
+    return `<table class="rv-dose"><caption>用藥總表</caption>
+      <thead><tr><th>藥物</th><th>使用時機</th><th>劑量</th></tr></thead><tbody>
+      ${list.map(({ drug, r, x }) => {
+        const t = rvTopic(r.topic_id);
+        const name = drug === prev ? '' : esc(rvCap(drug)); prev = drug;
+        return `<tr data-jump="${r.entry_id}" data-jumptopic="${r.topic_id}" data-mark="${esc(drug)}" title="點了跳到原條目">
+          <td class="rv-dose-drug">${name}</td>
+          <td><b>${esc(t ? t.name : '')}</b><span class="muted"> · ${esc(stripOrdinal(r.section) || '')}</span>
+            ${x.ctx ? `<div class="rv-dose-ctx">${esc(x.ctx)}</div>` : ''}</td>
+          <td class="rv-dose-val">${esc(x.dose)}</td></tr>`;
+      }).join('')}</tbody></table>`;
+  };
+  return tables.map(one).join('');
+}
+function rvClassOf(key) { return RV.drugs.classes.find(c => c.key === key); }
+function rvDrugRefsHtml(d, limitTopics) {
+  const groups = new Map();
+  d.refs.forEach(r => { if (!groups.has(r.topic_id)) groups.set(r.topic_id, []); groups.get(r.topic_id).push(r); });
+  const re = new RegExp('(' + d.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?)', 'ig');
+  const hl = s => esc(s).replace(re, '<mark>$1</mark>');
+  return [...groups.entries()].map(([tid, refs]) => {
+    const t = rvTopic(tid);
+    return `<div class="rv-dgroup"><div class="rv-dtopic">${esc(t ? t.name : '主題 ' + tid)}
+      <span class="muted small">${t ? esc(rvPageName(t.page_id)) : ''}</span></div>
+      ${refs.map(r => `<a href="#" class="rv-dref" data-jump="${r.entry_id}" data-jumptopic="${r.topic_id}" data-mark="${esc(d.name)}">
+        <span class="rv-ent-sec">${esc(stripOrdinal(r.section) || '（未命名章節）')}<span class="muted small"> · ${esc(catName(r.category))}</span></span>
+        <span class="rv-ent-ex">${hl(r.snippet)}</span></a>`).join('')}</div>`;
+  }).join('');
+}
+function rvShowClass(key, keepScroll) {
+  RV.drugView = { cls: key };
+  const c = rvClassOf(key), members = RV.drugs.byCls.get(key) || [];
+    $('#rvDrugMain').innerHTML = `<h2 class="rv-dname">${esc(c.name)}</h2>
+    ${members.map(d => `<details class="rv-dsec"${members.length <= 3 ? ' open' : ''}>
+      <summary><b>${esc(rvCap(d.name))}</b>${d.term ? '（類別總稱）' : ''}</summary>
+      ${rvDrugRefsHtml(d)}</details>`).join('')}
+    ${rvDoseTables(members)}`;
+  const main = $('#rvDrugMain');
+  $$('[data-drug]', main).forEach(b => b.onclick = () => rvShowDrug(b.dataset.drug));
+  rvBindJumps(main);
+  $$('.rv-dcls').forEach(b => b.classList.toggle('active', b.dataset.cls === key));
+  if (!keepScroll) main.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function rvShowDrug(name, keepScroll) {
+  RV.drugView = { drug: name };
+  const d = RV.drugs.list.find(x => x.name === name);
+  if (!d) return;
+  const key = d.cls || '_none', c = rvClassOf(key);
+  const sib = (RV.drugs.byCls.get(key) || []).filter(x => x.name !== name);
+  $('#rvDrugMain').innerHTML = `<h2 class="rv-dname">${esc(rvCap(d.name))}</h2>
+    <div class="rv-dclsline">類別：<a href="#" data-cls="${key}">${esc(c ? c.name : '其他')}</a>
+      ${sib.length ? `· 同類：${sib.slice(0, 20).map(x => `<a href="#" data-drug="${esc(x.name)}">${esc(rvCap(x.name))}</a>`).join('、')}${sib.length > 20 ? '…' : ''}` : ''}</div>
+    ${rvDrugRefsHtml(d)}`;
+  const main = $('#rvDrugMain');
+  $$('[data-cls]', main).forEach(a => a.onclick = ev => { ev.preventDefault(); rvShowClass(a.dataset.cls); });
+  $$('[data-drug]', main).forEach(a => a.onclick = ev => { ev.preventDefault(); rvShowDrug(a.dataset.drug); });
+  rvBindJumps(main);
+  if (!keepScroll) main.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
