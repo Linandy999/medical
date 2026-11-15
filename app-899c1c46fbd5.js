@@ -4627,11 +4627,15 @@ function rvPageName(id) { return ((RV.pages || []).find(p => p.id === id) || {})
 function rvTopicOptions(sel, bank) {
   const opts = (RV.topicsAll || []).slice().sort((a, b) => (a.page_id - b.page_id) || (a.sort - b.sort));
   return (RV.pages || []).map(p => `<optgroup label="${esc(p.name)}">${opts.filter(t => t.page_id === p.id).map(t =>
-    `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}${bank && bank[t.id] ? `（題庫 ${bank[t.id]} 題）` : ''}</option>`).join('')}</optgroup>`).join('');
+    `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('');
 }
 
 $$('.rv-tabs button').forEach(b => b.onclick = () => { RV.tab = b.dataset.rv; initReview(); });
 async function initReview() {
+  // 錯題本裡舊的自動出題（挖空、條列辨識）沒有意義，只留題庫題（id 以 B 開頭）
+  const wz = rvStore.get('wrongCloze', {});
+  const keep = Object.fromEntries(Object.entries(wz).filter(([k]) => String(k).startsWith('B')));
+  if (Object.keys(keep).length !== Object.keys(wz).length) rvStore.set('wrongCloze', keep);
   $$('.rv-tabs button').forEach(x => x.classList.toggle('active', x.dataset.rv === RV.tab));
   $$('.rv-panel').forEach(p => p.classList.toggle('active', p.id === 'rv-' + RV.tab));
   try {
@@ -4796,8 +4800,6 @@ function rvModeBody() {
         <button class="primary rv-go" id="rvClozeGo" disabled>出題</button></div>
       <div class="muted small" id="rvClozeN"></div>`;
     const sel = $('#rvClozeTopic');
-    rvBankCounts().then(c => { if (!Object.keys(c).length || !sel.isConnected) return;
-      const v = +sel.value || cur; sel.innerHTML = '<option value="">選一個主題…</option>' + rvTopicOptions(v, c); });
     const check = async () => {
       const tid = +sel.value; $('#rvClozeGo').disabled = true;
       if (!tid) { $('#rvClozeN').textContent = ''; return; }
@@ -4822,7 +4824,27 @@ function rvModeBody() {
         <option value="exam">只有考古題</option><option value="cloze">只有內文抽考</option></select></label>
         <label>題數<select id="rvWN">${[10, 20, 0].map(n => `<option value="${n}">${n ? n + ' 題' : '全部'}</option>`).join('')}</select></label>
         <button class="primary rv-go" id="rvWrongGo"${wc.exam + wc.cloze ? '' : ' disabled'}>開始</button></div>
-      ${wc.exam + wc.cloze ? '<div class="rv-actions"><a href="#" id="rvClearWrong" class="small">清空錯題本</a></div>' : ''}`;
+      ${wc.exam + wc.cloze ? '<div class="rv-actions"><a href="#" id="rvClearWrong" class="small">清空錯題本</a></div>' : ''}
+      <ul class="rv-wlist" id="rvWList"></ul>`;
+    // 錯題清單：可以一題一題刪
+    (async () => {
+      await rvQuestions().catch(() => []);
+      const we = rvStore.get('wrong', {}), wz = rvStore.get('wrongCloze', {});
+      const rows = (RV.qs || []).filter(q => we[q.id]).map(q => ({ k: 'e', id: q.id, t: we[q.id].t || 0,
+          tag: `考古 ${examTag(q)} 第 ${q.number || '?'} 題`, stem: q.stem }))
+        .concat(Object.entries(wz).map(([id, c]) => { const tp = rvTopic(c.topic_id);
+          return { k: 'c', id, t: c.t || 0, tag: '抽考' + (tp ? '・' + tp.name : ''),
+                   stem: c.stem || String(c.qhtml || '').replace(/<[^>]+>/g, ' ') }; }))
+        .sort((x, y) => y.t - x.t);
+      const ul = $('#rvWList'); if (!ul) return;
+      ul.innerHTML = rows.map(r => `<li><span class="rv-wtag">${esc(r.tag)}</span>
+          <span class="rv-wstem">${esc(String(r.stem || '').replace(/\s+/g, ' ').slice(0, 70))}</span>
+          <button class="rv-wdel" data-wk="${r.k}" data-wid="${esc(String(r.id))}" title="從錯題本移除">✕</button></li>`).join('');
+      $$('.rv-wdel', ul).forEach(btn => btn.onclick = () => {
+        const key = btn.dataset.wk === 'e' ? 'wrong' : 'wrongCloze', w = rvStore.get(key, {});
+        delete w[btn.dataset.wid]; rvStore.set(key, w); rvQuizHome();
+      });
+    })();
     $('#rvWrongGo').onclick = () => {
       const sc = $('#rvWrongScope').value;
       const we = rvStore.get('wrong', {}), wz = rvStore.get('wrongCloze', {});
@@ -5255,7 +5277,7 @@ function rvPick(val) {
     rvStore.set('wrong', w);
   } else {
     const w = rvStore.get('wrongCloze', {});
-    if (!ok) w[it.c.id] = Object.assign({}, it.c, { n: ((w[it.c.id] || {}).n || 0) + 1, t: Date.now() });
+    if (!ok && it.c.kind === 'bank') w[it.c.id] = Object.assign({}, it.c, { n: ((w[it.c.id] || {}).n || 0) + 1, t: Date.now() });
     else if (Z.mode === 'wrong') delete w[it.c.id];
     rvStore.set('wrongCloze', w);
   }
