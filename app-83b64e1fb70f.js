@@ -5066,7 +5066,7 @@ async function rvBank(tid) {
 }
 function rvBankToQ(b) {
   const opts = b.options || [], ans = opts['ABCD'.indexOf(b.answer)];
-  const img = b.image_id ? `<div class="q-imgs"><figure class="q-img"><img src="/api/images/${b.image_id}/file?v=${Math.round(b.img_v || 0)}"
+  const img = b.image_id ? `<div class="q-imgs"><figure class="q-img"><img src="${imgSrc({ id: b.image_id, updated_at: b.img_v })}"
       alt="題目附圖" loading="lazy" data-qimgview="1"></figure></div>` : '';
   const stem = `<div class="q-stem">${esc(b.stem)}</div>${img}`;
   return { id: 'B' + b.id, entry_id: b.entry_id, topic_id: b.topic_id, section: stripOrdinal(b.section || ''),
