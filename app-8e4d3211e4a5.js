@@ -2403,12 +2403,12 @@ function imgSrc(it) {
 }
 
 function renderImgKinds(kinds, total, unclassified) {
-  const all = `<button class="fig-kind ${imgState.kind === '' ? 'on' : ''}" data-imgkind="">全部${total ? ` <span class="ik-n">${total}</span>` : ''}</button>`;
+  const all = `<button class="fig-kind ${imgState.kind === '' ? 'on' : ''}" data-imgkind="">全部</button>`;
   const rest = (kinds || []).map(k =>
     `<button class="fig-kind ${imgState.kind === k.slug ? 'on' : ''}" data-imgkind="${esc(k.slug)}"
-       data-kindid="${k.id}" data-builtin="${k.builtin}">${esc(k.name)}${k.count ? ` <span class="ik-n">${k.count}</span>` : ''}</button>`).join('');
+       data-kindid="${k.id}" data-builtin="${k.builtin}">${esc(k.name)}</button>`).join('');
   const un = unclassified
-    ? `<button class="fig-kind ${imgState.kind === '__none' ? 'on' : ''}" data-imgkind="__none">未分類 <span class="ik-n">${unclassified}</span></button>`
+    ? `<button class="fig-kind ${imgState.kind === '__none' ? 'on' : ''}" data-imgkind="__none">未分類</button>`
     : '';
   $('#imgKinds').innerHTML = all + rest + un;
   $$('[data-imgkind]').forEach(b => {
