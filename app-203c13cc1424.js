@@ -4668,6 +4668,54 @@ function rvWrongCounts() {
   return { exam: Object.keys(rvStore.get('wrong', {})).length,
            cloze: Object.keys(rvStore.get('wrongCloze', {})).length };
 }
+/* ---------- 題組（承上題） ----------
+   考卷裡「承上題」只問新的問題，病例敘述在前一題。抽到其中一題就把整組一起帶進來、依序作答；
+   錯題本裡單獨出現承上題時，在題目上方附上前一題的題幹。 */
+const RV_FOLLOW = /^\s*[（(]?\s*(承上題?|接上題|續上題|同上題)/;
+function rvIsFollow(q) { return RV_FOLLOW.test(String(q.stem || '')); }
+function rvPrevQ(q) {
+  return (RV.qs || []).find(x => x.exam_id === q.exam_id && x.number === (q.number || 0) - 1) || null;
+}
+function rvNextQ(q) {
+  return (RV.qs || []).find(x => x.exam_id === q.exam_id && x.number === (q.number || 0) + 1) || null;
+}
+function rvGroupOf(q) {
+  let head = q, guard = 0;
+  while (rvIsFollow(head) && guard++ < 10) { const p = rvPrevQ(head); if (!p) break; head = p; }
+  const out = [head]; let cur = head; guard = 0;
+  while (guard++ < 10) { const n = rvNextQ(cur); if (!n || !rvIsFollow(n)) break; out.push(n); cur = n; }
+  return out;
+}
+// 依題組展開：題組視為一個單位一起洗牌，再取到 n 題為止（題組不拆開，所以可能略多於 n）
+function rvExpandGroups(list, n, shuffle) {
+  const seen = new Set(), groups = [];
+  list.forEach(q => {
+    const g = rvGroupOf(q);
+    const key = g[0].id;
+    if (seen.has(key)) return;
+    seen.add(key);
+    groups.push(g);
+  });
+  if (shuffle) rvShuffle(groups);
+  const out = [];
+  for (const g of groups) {
+    if (n && out.length >= n) break;
+    out.push(...g);
+  }
+  return out;
+}
+// 題目前面要附的題組題幹：本輪上一題不是它的前一題時才附
+function rvLeadStems(q, prevItem) {
+  if (!rvIsFollow(q)) return [];
+  const p = rvPrevQ(q);
+  if (!p) return [];
+  if (prevItem && prevItem.type === 'exam' && prevItem.q.id === p.id) return [];
+  const chain = [];
+  let cur = q, guard = 0;
+  while (rvIsFollow(cur) && guard++ < 10) { const pp = rvPrevQ(cur); if (!pp) break; chain.unshift(pp); cur = pp; }
+  return chain;
+}
+
 async function rvQuestions() {
   if (!RV.qs) RV.qs = (await api('/exam-questions?limit=5000')).questions || [];
   return RV.qs;
@@ -4731,9 +4779,9 @@ function rvModeBody() {
     $('#rvStart').onclick = () => {
       const scope = $('#rvScope').value; rvStore.set('lastScope', scope);
       let pool = rvExamPool(scope);
-      if ($('#rvOrder').value === 'rand') rvShuffle(pool);
-      else pool.sort((a, b) => (b.roc_year || b.year || 0) - (a.roc_year || a.year || 0) || (a.number || 0) - (b.number || 0));
-      const n = +$('#rvN').value; if (n) pool = pool.slice(0, n);
+      const rand = $('#rvOrder').value === 'rand';
+      if (!rand) pool.sort((a, b) => (b.roc_year || b.year || 0) - (a.roc_year || a.year || 0) || (a.number || 0) - (b.number || 0));
+      pool = rvExpandGroups(pool, +$('#rvN').value, rand);
       rvStartSession('exam', pool.map(q => ({ type: 'exam', q })));
     };
   } else if (RV.mode === 'cloze') {
@@ -4769,7 +4817,10 @@ function rvModeBody() {
       const sc = $('#rvWrongScope').value;
       const we = rvStore.get('wrong', {}), wz = rvStore.get('wrongCloze', {});
       let list = [];
-      if (sc !== 'cloze') list = list.concat((RV.qs || []).filter(q => we[q.id]).map(q => ({ type: 'exam', q })));
+      if (sc !== 'cloze') {
+        // 錯題本只放答錯的那一題；承上題會在畫面上附前一題題幹，不必把整組都塞進來
+        list = list.concat((RV.qs || []).filter(q => we[q.id]).map(q => ({ type: 'exam', q })));
+      }
       if (sc !== 'exam') list = list.concat(Object.values(wz).map(c => ({ type: 'cloze', c })));
       rvShuffle(list);
       const n = +$('#rvWN').value; if (n) list = list.slice(0, n);
@@ -5070,7 +5121,10 @@ function rvQuizShow() {
     const q = it.q, ans = rvAnswerSet(q.answer);
     head = ['考古題', (q.roc_year || q.year) ? esc(examTag(q)) : '', q.subject ? esc(String(q.subject).slice(0, 30)) : '',
             q.number ? `第 ${q.number} 題` : ''].filter(Boolean).join(' · ');
-    stem = `<div class="q-stem">${esc(q.stem)}</div>${renderQuestionImages(Object.assign({}, q))}`;
+    const leads = rvLeadStems(q, Z.list[Z.i - 1]);
+    stem = (leads.length ? `<div class="rv-lead"><div class="rv-lead-h">題組前情（${leads.map(p => `第 ${p.number} 題`).join('、')}）</div>
+        ${leads.map(p => `<div class="q-stem">${esc(p.stem)}</div>${renderQuestionImages(Object.assign({}, p))}`).join('')}</div>` : '')
+      + `<div class="q-stem">${esc(q.stem)}</div>${renderQuestionImages(Object.assign({}, q))}`;
     opts = (q.options || []).map((o, i) => {
       const L = String.fromCharCode(65 + i);
       const cls = !answered ? '' : (!ans.size || ans.has(L)) ? 'correct' : (Z.picked === L ? 'wrong' : '');
