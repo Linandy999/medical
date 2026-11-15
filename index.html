@@ -1321,6 +1321,9 @@ mark.jump-hit{background:#ffd54a;color:#2c2a26;border-radius:3px;padding:0 2px}
 .rv-wdel{flex:none;border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;min-height:0}
 .rv-wdel:hover{color:var(--danger,#c33)}
 
+#rvFoldWrong{margin-right:16px}
+.rv-wlist[hidden]{display:none}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1872,13 +1875,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-899c1c46fbd5.js';
+    s.src = 'app-65ad4ce7b1b1.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-899c1c46fbd5.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-65ad4ce7b1b1.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-8cdba717fe39.json').then(function (r) {

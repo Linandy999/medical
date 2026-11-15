@@ -4824,8 +4824,14 @@ function rvModeBody() {
         <option value="exam">只有考古題</option><option value="cloze">只有內文抽考</option></select></label>
         <label>題數<select id="rvWN">${[10, 20, 0].map(n => `<option value="${n}">${n ? n + ' 題' : '全部'}</option>`).join('')}</select></label>
         <button class="primary rv-go" id="rvWrongGo"${wc.exam + wc.cloze ? '' : ' disabled'}>開始</button></div>
-      ${wc.exam + wc.cloze ? '<div class="rv-actions"><a href="#" id="rvClearWrong" class="small">清空錯題本</a></div>' : ''}
-      <ul class="rv-wlist" id="rvWList"></ul>`;
+      ${wc.exam + wc.cloze ? `<div class="rv-actions"><a href="#" id="rvFoldWrong" class="small">${rvStore.get('wFold', false) ? '展開錯題' : '收起錯題'}</a><a href="#" id="rvClearWrong" class="small">清空錯題本</a></div>` : ''}
+      <ul class="rv-wlist" id="rvWList"${rvStore.get('wFold', false) ? ' hidden' : ''}></ul>`;
+    const fw = $('#rvFoldWrong');
+    if (fw) fw.onclick = ev => {
+      ev.preventDefault();
+      const fold = !rvStore.get('wFold', false); rvStore.set('wFold', fold);
+      $('#rvWList').hidden = fold; fw.textContent = fold ? '展開錯題' : '收起錯題';
+    };
     // 錯題清單：可以一題一題刪
     (async () => {
       await rvQuestions().catch(() => []);
