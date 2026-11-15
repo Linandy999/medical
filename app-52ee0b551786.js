@@ -332,6 +332,12 @@
   /* 影像庫。篩選、計數、排序三件事都照 routes.images_index 重做一次：
      計數只跟著科別走（不跟分類與關鍵字），否則按鈕上的數字會跟畫面對不起來；
      排序是「檢查→序列→切片」三層，不能只照 created_at。 */
+  R['/review/bank'] = qs => {
+    const tid = Number(qs.get('topic_id') || 0), all = DB.quiz_bank || [];
+    if (!tid) { const counts = {}; all.forEach(q => { counts[q.topic_id] = (counts[q.topic_id] || 0) + 1; }); return { counts }; }
+    return { items: all.filter(q => q.topic_id === tid) };
+  };
+
   R['/images-index'] = qs => {
     const kind = qs.get('kind') || '';
     const pid = qs.get('page_id') || '';
@@ -4618,10 +4624,10 @@ async function rvTopics() {
 }
 function rvTopic(id) { return (RV.topicsAll || []).find(t => t.id === id) || null; }
 function rvPageName(id) { return ((RV.pages || []).find(p => p.id === id) || {}).name || ''; }
-function rvTopicOptions(sel) {
+function rvTopicOptions(sel, bank) {
   const opts = (RV.topicsAll || []).slice().sort((a, b) => (a.page_id - b.page_id) || (a.sort - b.sort));
   return (RV.pages || []).map(p => `<optgroup label="${esc(p.name)}">${opts.filter(t => t.page_id === p.id).map(t =>
-    `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</optgroup>`).join('');
+    `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}${bank && bank[t.id] ? `（題庫 ${bank[t.id]} 題）` : ''}</option>`).join('')}</optgroup>`).join('');
 }
 
 $$('.rv-tabs button').forEach(b => b.onclick = () => { RV.tab = b.dataset.rv; initReview(); });
@@ -4787,23 +4793,27 @@ function rvModeBody() {
   } else if (RV.mode === 'cloze') {
     const cur = state.topicId || rvStore.get('clozeTopic', null);
     body.innerHTML = `<div class="rv-form"><label>主題<select id="rvClozeTopic"><option value="">選一個主題…</option>${rvTopicOptions(cur)}</select></label>
-        <button class="primary rv-go" id="rvClozeGo" disabled>出 10 題</button></div>
+        <button class="primary rv-go" id="rvClozeGo" disabled>出題</button></div>
       <div class="muted small" id="rvClozeN"></div>`;
     const sel = $('#rvClozeTopic');
+    rvBankCounts().then(c => { if (!Object.keys(c).length || !sel.isConnected) return;
+      const v = +sel.value || cur; sel.innerHTML = '<option value="">選一個主題…</option>' + rvTopicOptions(v, c); });
     const check = async () => {
       const tid = +sel.value; $('#rvClozeGo').disabled = true;
       if (!tid) { $('#rvClozeN').textContent = ''; return; }
       rvStore.set('clozeTopic', tid);
       $('#rvClozeN').textContent = '整理題目中…';
-      const items = await rvClozeItems(tid);
-      $('#rvClozeN').textContent = items.length ? '' : '這個主題的內文不夠出題';
-      $('#rvClozeGo').disabled = !items.length;
+      const bank = await rvBank(tid).catch(() => []);
+      const items = bank.length ? bank : await rvClozeItems(tid);
+      const canGen = state.isAdmin && !window.MEDKB_STATIC;
+      $('#rvClozeN').textContent = bank.length || canGen ? '' : items.length ? '這個主題還沒有題庫，先用內文自動出題' : '這個主題的內文不夠出題';
+      $('#rvClozeGo').disabled = !items.length && !canGen;
     };
     sel.onchange = check; check();
     $('#rvClozeGo').onclick = async () => {
       $('#rvClozeGo').disabled = true; $('#rvClozeN').textContent = '出題中…';
-      const list = await rvMakeQuiz(+sel.value, 10);
-      rvStartSession('cloze', list.map(c => ({ type: 'cloze', c })), +sel.value);
+      const st = $('#rvClozeN');
+      rvStartSession('cloze', await rvMakeSession(+sel.value, 10, m => { if (st) st.textContent = m; }), +sel.value);
     };
   } else {
     const wc = rvWrongCounts();
@@ -4889,6 +4899,7 @@ async function rvClozeItems(tid) {
       if (kind === 'term' && isLabel(s, m)) continue;
       if (s.replace(/\*/g, '').replace(ans, '').trim().length < 12) continue;   // 句子太短，看不出在問什麼
       seenAns.add(ans);
+      if (kind === 'num') continue;          // 挖空數字沒有鑑別力，不出
       const opts = rvDistractors(ans, kind, pool[kind]);
       if (opts.length < 3) continue;
       items.push({ L, ans, kind, distract: opts,
@@ -5024,6 +5035,7 @@ function rvListItems(entries) {
       if (/[：:；;，,]/.test(t)) return;
       if (/^(先|若|可|要|不|沒|再|之後|通常|多數|少數|有些|約|常|也|但|和|與|或|是|會|需|應|以|在|從|把|讓|用)/.test(t)) return;
       if (/[（(]$/.test(t)) return;
+      if (/^(本章|本節|本篇|此章)|聚焦/.test(t)) return;
       out.push({ entry: e, cat: e.category, text: t });
     });
   });
@@ -5035,7 +5047,59 @@ function rvKeyOf(t) {
   const en = (t.match(/[A-Za-z][A-Za-z\-]{4,}/g) || []).sort((a, b) => b.length - a.length)[0];
   return [cjk, en && en.toLowerCase()].filter(Boolean);
 }
-async function rvMakeQuiz(tid, n) {
+/* ---------- 抽考組卷：10 題都是本主題的題目 ---------- */
+async function rvMakeSession(tid, n, onStatus) {
+  return (await rvMakeQuiz(tid, n, onStatus)).map(c => ({ type: 'cloze', c }));
+}
+
+/* ---------- 題庫（國考風格，人工寫好存在資料庫） ---------- */
+const rvBankCache = new Map();
+let rvBankCountsP = null;
+function rvBankCounts() {
+  if (!rvBankCountsP) rvBankCountsP = api('/review/bank').then(r => r.counts || {}).catch(() => { rvBankCountsP = null; return {}; });
+  return rvBankCountsP;
+}
+async function rvBank(tid) {
+  if (!rvBankCache.has(tid)) rvBankCache.set(tid, api('/review/bank?topic_id=' + tid).then(r => r.items || [])
+    .catch(err => { rvBankCache.delete(tid); throw err; }));
+  return rvBankCache.get(tid);
+}
+function rvBankToQ(b) {
+  const opts = b.options || [], ans = opts['ABCD'.indexOf(b.answer)];
+  const img = b.image_id ? `<div class="q-imgs"><figure class="q-img"><img src="/api/images/${b.image_id}/file?v=${Math.round(b.img_v || 0)}"
+      alt="題目附圖" loading="lazy" data-qimgview="1"></figure></div>` : '';
+  const stem = `<div class="q-stem">${esc(b.stem)}</div>${img}`;
+  return { id: 'B' + b.id, entry_id: b.entry_id, topic_id: b.topic_id, section: stripOrdinal(b.section || ''),
+           cat: b.category, kind: 'bank', stem: b.stem, prompt: '', answer: ans, options: rvShuffle(opts.slice()),
+           qhtml: stem, ahtml: stem + (b.explanation ? `<div class="rv-expl">${esc(b.explanation)}</div>` : '') };
+}
+// 做過的題庫題記在這台裝置，重新整理也不會一直出同一批
+function rvBankSeen() { return rvStore.get('bankSeen', {}); }
+async function rvMakeQuiz(tid, n, onStatus) {
+  let bank = await rvBank(tid).catch(() => []);
+  const seen = rvBankSeen();
+  let fresh = bank.filter(b => !seen[b.id]);
+  // 沒做過的題不夠：本機網站請 Claude 出新題（發布版沒有這個功能，直接重用舊題）
+  if (fresh.length < n && state.isAdmin && !window.MEDKB_STATIC) {
+    if (onStatus) onStatus('出題中…約半分鐘到一分鐘');
+    try {
+      const r = await api('/review/bank/generate', { method: 'POST', body: { topic_id: tid, n: 10 } });
+      bank = r.items || bank;
+      rvBankCache.set(tid, Promise.resolve(bank));
+      rvBankCountsP = null;
+      fresh = bank.filter(b => !seen[b.id]);
+    } catch (e) { toast(e.message || '出題失敗', true); }
+  }
+  if (bank.length) {
+    let pick = rvShuffle(fresh.slice()).slice(0, n);
+    if (pick.length < n) {                      // 全部做過了：補舊題
+      const old = rvShuffle(bank.filter(b => !pick.includes(b))).slice(0, n - pick.length);
+      pick = pick.concat(old);
+    }
+    pick.forEach(b => { seen[b.id] = 1; });
+    rvStore.set('bankSeen', seen);
+    return rvShuffle(pick.map(rvBankToQ));
+  }
   const mine = await rvTopicEntries(tid);
   const t = rvTopic(tid);
   const fullText = rvPlainText(mine.map(e => e.summary_md).join('\n')).toLowerCase();
@@ -5119,7 +5183,7 @@ function rvQuizShow() {
   let head, stem, opts;
   if (it.type === 'exam') {
     const q = it.q, ans = rvAnswerSet(q.answer);
-    head = ['考古題', (q.roc_year || q.year) ? esc(examTag(q)) : '', q.subject ? esc(String(q.subject).slice(0, 30)) : '',
+    head = [it.tag === 'review' ? '複習' : it.tag === 'exam' ? '國考原題' : '考古題', (q.roc_year || q.year) ? esc(examTag(q)) : '', q.subject && !it.tag ? esc(String(q.subject).slice(0, 30)) : '',
             q.number ? `第 ${q.number} 題` : ''].filter(Boolean).join(' · ');
     const leads = rvLeadStems(q, Z.list[Z.i - 1]);
     stem = (leads.length ? `<div class="rv-lead"><div class="rv-lead-h">題組前情（${leads.map(p => `第 ${p.number} 題`).join('、')}）</div>
@@ -5132,7 +5196,7 @@ function rvQuizShow() {
     }).join('');
   } else {
     const c = it.c, t = rvTopic(c.topic_id);
-    head = ['內文抽考', t ? esc(t.name) : '', c.cat ? esc(catName(c.cat)) : ''].filter(Boolean).join(' · ');
+    head = [it.tag === 'review' ? '複習' : '內文抽考', t ? esc(t.name) : '', c.cat ? esc(catName(c.cat)) : ''].filter(Boolean).join(' · ');
     stem = `<div class="rv-cq">${answered ? c.ahtml : c.qhtml}</div>
       ${c.prompt === '' ? '' : `<div class="muted small">${esc(c.prompt || '（？）處應填入什麼？')}</div>`}`;
     opts = c.options.map((o, i) => {
@@ -5203,21 +5267,21 @@ function rvQuizEnd() {
   const bad = Z.results.filter(r => !r.ok).map(r => r.it);
   const line = it => it.type === 'exam'
     ? `考古 ${esc(examTag(it.q))} 第 ${it.q.number || '?'} 題：${esc(String(it.q.stem).slice(0, 50))}…`
-    : `抽考 ${esc(it.c.section)}：答案 ${esc(it.c.answer)}`;
+    : it.c.stem ? `抽考：${esc(String(it.c.stem).slice(0, 50))}…` : `抽考 ${esc(it.c.section)}：答案 ${esc(it.c.answer)}`;
   $('#rv-quiz').innerHTML = `<div class="rv-home">
     <h2>練習結果</h2>
     <div class="rv-score">${n ? Math.round(ok * 100 / n) : 0}<small>%</small></div>
     <p>作答 ${n} 題，答對 ${ok} 題。${bad.length && Z.mode !== 'wrong' ? `答錯的 ${bad.length} 題已收進錯題本。` : ''}</p>
     ${bad.length ? `<ul class="rv-badlist">${bad.map(it => `<li>${line(it)}</li>`).join('')}</ul>` : ''}
     <div class="rv-actions">
-      ${Z.mode === 'cloze' ? '<button class="primary" id="rvMore">再出 10 題</button>' : ''}
+      ${Z.mode === 'cloze' ? '<button class="primary" id="rvMore">出題</button>' : ''}
       <button${Z.mode === 'cloze' ? '' : ' class="primary"'} id="rvAgain">回到練習</button></div>
   </div>`;
   $('#rvAgain').onclick = () => { RV.quiz = null; rvQuizHome(); };
   const more = $('#rvMore');
   if (more) more.onclick = async () => {
-    const list = await rvMakeQuiz(Z.topic, 10);
-    rvStartSession('cloze', list.map(c => ({ type: 'cloze', c })), Z.topic);
+    more.disabled = true; more.textContent = '出題中…';
+    rvStartSession('cloze', await rvMakeSession(Z.topic, 10, m => { more.textContent = m; }), Z.topic);
   };
 }
 
