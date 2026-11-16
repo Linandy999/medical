@@ -751,7 +751,11 @@ function showView(v) {
   if (v === 'overview') loadPages();
   if (v === 'settings') loadSettings();
   if (v === 'notes') loadNotes();
-  if (v === 'exams') initExams();
+  if (v === 'exams') {
+    // 從條目按「回到考古題」回來時不重載，保留原本的捲動位置與展開狀態
+    if (state.examKeep) state.examKeep = false; else initExams();
+    const bk = $('#rvBack'); if (bk && bk.dataset.view === 'exams') bk.hidden = true;
+  }
   if (v === 'review') { initReview(); const bk = $('#rvBack'); if (bk) bk.hidden = true; }
   if (v === 'figs') loadFigures();
   if (v === 'imgs') loadImages();
@@ -2324,6 +2328,12 @@ function bindFigCards() {
 async function jumpToEntry(entryId, topicId, opts) {
   if (!topicId) { toast('找不到來源條目', true); return; }
   try {
+    // 從考古題分頁點進條目：記住位置，顯示「回到考古題」
+    const ex = $('#view-exams');
+    if (ex && ex.classList.contains('active')) {
+      const y = window.scrollY;
+      rvShowBack('考古題', () => { state.examKeep = true; showView('exams'); setTimeout(() => window.scrollTo(0, y), 80); }, 'exams');
+    }
     showView('kb');
     // 同一個主題且卡片已在畫面上就不重載，免得捲動位置和收合狀態被洗掉
     const here = state.topicId === topicId && $(`.card[data-entry="${entryId}"]`);
@@ -4654,7 +4664,7 @@ function rvBindJumps(root) {
     rvShowBack(from);
   });
 }
-function rvShowBack(label) {
+function rvShowBack(label, back, view) {
   let b = $('#rvBack');
   if (!b) {
     b = document.createElement('button');
@@ -4664,9 +4674,11 @@ function rvShowBack(label) {
   }
   b.textContent = '← 回到' + label;
   b.hidden = false;
+  b.dataset.view = view || 'review';
   b.onclick = () => {
     b.hidden = true;
     clearJumpMarks();
+    if (back) { back(); return; }
     showView('review');
     const y = RV.backScroll || 0;
     setTimeout(() => window.scrollTo(0, y), 80);
@@ -5464,3 +5476,69 @@ function rvShowDrug(name, keepScroll) {
   rvBindJumps(main);
   if (!keepScroll) main.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
+
+
+/* ================= 外觀切換（新版／舊版、主色）＋標出數字 =================
+   新版樣式全掛在 html.skin-new 底下，切回舊版只是拿掉 class。設定存在這台裝置的瀏覽器。 */
+(function () {
+  const d = document.documentElement;
+  const ls = { get(k, v) { try { return localStorage.getItem(k) ?? v; } catch (e) { return v; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const ICONS = {
+    overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    kb: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/>',
+    exams: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+    review: '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',
+    figs: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+    imgs: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+    pubmed: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+    calc: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/>',
+  };
+  const svg = p => `<span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
+  $$('nav.tabs button[data-view]').forEach(b => { if (ICONS[b.dataset.view]) b.insertAdjacentHTML('afterbegin', svg(ICONS[b.dataset.view])); });
+  const cl = $('#calcTabLink'); if (cl) cl.insertAdjacentHTML('afterbegin', svg(ICONS.calc));
+
+  // 外觀選單
+  const btn = $('#skinBtn'); let pop = null;
+  const render = () => {
+    const isNew = d.classList.contains('skin-new'), ac = d.getAttribute('data-accent') || 'blue';
+    pop.innerHTML = `<div class="row"><span>外觀</span><span class="seg">
+        <button data-skin="new" class="${isNew ? 'on' : ''}">新版</button>
+        <button data-skin="old" class="${isNew ? '' : 'on'}">舊版</button></span></div>
+      <div class="row"${isNew ? '' : ' hidden'}><span>主色</span>
+        ${[['blue', '#2563eb', '藍'], ['teal', '#1e6f66', '青綠'], ['wine', '#8c2f22', '酒紅']].map(([k, c, n]) =>
+          `<button class="dot-c ${ac === k ? 'on' : ''}" data-ac="${k}" title="${n}" style="background:${c}"></button>`).join('')}</div>`;
+    pop.querySelectorAll('[data-skin]').forEach(b => b.onclick = () => {
+      const on = b.dataset.skin === 'new'; d.classList.toggle('skin-new', on); ls.set('medkb.skin', on ? 'new' : 'old'); render();
+    });
+    pop.querySelectorAll('[data-ac]').forEach(b => b.onclick = () => {
+      d.setAttribute('data-accent', b.dataset.ac); ls.set('medkb.accent', b.dataset.ac); render();
+    });
+  };
+  if (btn) btn.onclick = ev => {
+    ev.stopPropagation();
+    if (pop) { pop.remove(); pop = null; return; }
+    pop = document.createElement('div'); pop.className = 'skin-pop';
+    const r = btn.getBoundingClientRect();
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    pop.style.right = Math.max(8, innerWidth - r.right) + 'px';
+    document.body.appendChild(pop); render();
+    pop.onclick = e => e.stopPropagation();
+  };
+  document.addEventListener('click', () => { if (pop) { pop.remove(); pop = null; } });
+
+  // 標出數字：把含數字的粗體加上 b-num，勾選時才上色
+  const mark = () => $$('#kbBody .md strong:not(.b-num)').forEach(s => { if (/\d/.test(s.textContent)) s.classList.add('b-num'); });
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued || !document.body.classList.contains('num-hl')) return;
+    queued = true; requestAnimationFrame(() => { queued = false; mark(); });
+  }).observe($('#kbBody'), { childList: true, subtree: true });
+  const box = $('#numHl');
+  if (box) {
+    box.checked = ls.get('medkb.numhl', '0') === '1';
+    const apply = () => { document.body.classList.toggle('num-hl', box.checked); if (box.checked) mark(); };
+    box.onchange = () => { ls.set('medkb.numhl', box.checked ? '1' : '0'); apply(); };
+    apply();
+  }
+})();

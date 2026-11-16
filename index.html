@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>醫學文獻知識庫</title>
+<script>(function(){var d=document.documentElement,s='new',c='blue';
+try{s=localStorage.getItem('medkb.skin')||'new';c=localStorage.getItem('medkb.accent')||'blue';}catch(e){}
+if(s==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);})();</script>
 <style>/* 「暖紙」配色：米白底、暖墨色字、墨綠主色。
    全站顏色都走這裡的變數，所以只改這兩塊就會整站生效（含重點框、表格、標籤）。 */
 :root{
@@ -1324,6 +1327,118 @@ mark.jump-hit{background:#ffd54a;color:#2c2a26;border-radius:3px;padding:0 2px}
 #rvFoldWrong{margin-right:16px}
 .rv-wlist[hidden]{display:none}
 
+/* ================= 新版外觀（2026-11-16，樣稿方案 D）=================
+   全部規則都掛在 html.skin-new 底下：右上角「外觀」切回舊版時拿掉這個 class，
+   畫面就回到上面的原始樣式，不必刪任何東西。主色由 html[data-accent] 決定。 */
+html.skin-new{
+  --bg:#f6f1e7; --panel:#fffdf8; --panel-2:#f1ebe0; --border:#e6dccb;
+  --text:#2a2420; --muted:#857a6c; --faint:#9a8f80;
+  --accent:#2563eb; --accent-soft:#e6ecfb; --meta:var(--accent);
+  --side-bg:#fbf8f2; --radius:12px;
+}
+html.skin-new[data-accent=teal]{--accent:#1e6f66;--accent-soft:#dfefeb}
+html.skin-new[data-accent=wine]{--accent:#8c2f22;--accent-soft:#f3e3d9}
+@media (prefers-color-scheme: dark){
+  html.skin-new{
+    --bg:#1a1815; --panel:#221f1b; --panel-2:#2b2722; --border:#3a352e;
+    --text:#ece7de; --muted:#a39b8e; --faint:#7a7265; --side-bg:#1f1c18;
+    --accent:#7aa2ff; --accent-soft:#1d2740;
+  }
+  html.skin-new[data-accent=teal]{--accent:#5fbfae;--accent-soft:#183430}
+  html.skin-new[data-accent=wine]{--accent:#e58a7a;--accent-soft:#3a201d}
+}
+html.skin-new body{font-family:"Noto Sans TC",-apple-system,"PingFang TC","Heiti TC",sans-serif}
+html.skin-new button{border-radius:10px}
+html.skin-new input,html.skin-new select,html.skin-new textarea{border-radius:10px}
+
+/* 頂部 */
+html.skin-new header{background:color-mix(in srgb,var(--panel) 88%,transparent);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+html.skin-new nav.tabs{gap:2px}
+html.skin-new nav.tabs button,html.skin-new nav.tabs a.tab-link{display:inline-flex;align-items:center;gap:6px;
+  border-radius:9px;font-weight:500;padding:7px 12px}
+html.skin-new nav.tabs button:hover,html.skin-new nav.tabs a.tab-link:hover{background:var(--panel-2);color:var(--text)}
+html.skin-new nav.tabs button.active{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.tab-ico{display:none}
+html.skin-new .tab-ico{display:inline-flex}
+.tab-ico svg{width:17px;height:17px}
+html.skin-new .page-chip{border-radius:9px;background:var(--panel)}
+
+/* 側欄 */
+html.skin-new aside{background:var(--side-bg)}
+html.skin-new #topicSearch{background:var(--panel-2);border-color:transparent}
+html.skin-new .topic-row{border-radius:10px}
+html.skin-new .topic-row.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 25%,transparent)}
+html.skin-new .topic-row.active .read-mark{color:#fff}
+html.skin-new .topic-node.open > .cat-nav{border-left:2px solid var(--border)}
+html.skin-new .cat-nav a{border-radius:8px;color:var(--muted)}
+html.skin-new .cat-nav a:hover{color:var(--text)}
+
+/* 主題標題與工具列 */
+html.skin-new .kb-head h1{font-size:30px;font-weight:900;letter-spacing:.01em;line-height:1.3}
+html.skin-new .toolbar #kbSearch{background:var(--panel);border-radius:12px;padding:10px 14px}
+
+/* 分類標題 */
+html.skin-new .cat-head{border-bottom:none;padding-bottom:4px}
+html.skin-new .cat-head h2{font-size:19px;font-weight:900}
+html.skin-new .cat-head h2::before{width:12px;height:12px;border-radius:4px;margin-right:10px}
+
+/* 條目卡片 */
+html.skin-new .card{border-radius:16px;padding:18px 22px 14px;
+  box-shadow:0 1px 3px rgba(60,40,10,.05);border-left-width:5px}
+html.skin-new .src-group{border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(60,40,10,.05);margin-bottom:16px}
+html.skin-new .src-group .card{box-shadow:none;border-radius:0}
+html.skin-new .src-group .card:first-child{border-radius:16px 16px 0 0}
+html.skin-new .src-group .card:last-child{border-radius:0 0 16px 16px}
+html.skin-new .src-group .card:only-child{border-radius:16px}
+html.skin-new .card .src{color:var(--muted);font-weight:500;border-bottom-color:var(--border)}
+html.skin-new .card .src > span:first-child{color:var(--text);font-weight:700}
+
+/* 表格：圓角、斑馬紋、首欄捲動時固定 */
+html.skin-new .md table{border:1px solid var(--border);border-radius:12px;border-collapse:separate;border-spacing:0}
+html.skin-new .md th,html.skin-new .md td{border:none;border-bottom:1px solid var(--border)}
+html.skin-new .md tr:last-child td{border-bottom:none}
+html.skin-new .md th{background:var(--panel-2);font-weight:700}
+html.skin-new .md tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--panel-2) 45%,var(--panel))}
+html.skin-new .md td:first-child,html.skin-new .md th:first-child{position:sticky;left:0;z-index:1;font-weight:600}
+html.skin-new .md tbody tr:nth-child(odd) td:first-child{background:var(--panel)}
+
+/* 粗體：平常就是一般粗體；勾「標出數字」才把含數字的粗體標成主色 */
+html.skin-new .md strong{font-weight:700}
+body.num-hl .md strong.b-num{color:var(--accent);background:var(--accent-soft);padding:0 4px;border-radius:5px}
+
+/* 相關考古題摺疊 */
+html.skin-new .exam-block{border-radius:12px;background:var(--panel)}
+html.skin-new .exam-block > summary{color:var(--accent)}
+
+/* 外觀選單 */
+.skin-btn{font-size:13px;padding:4px 10px}
+.skin-pop{position:absolute;z-index:70;background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.14);padding:12px 14px;font-size:13.5px;min-width:220px}
+.skin-pop .row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.skin-pop .row > span{width:44px;color:var(--muted);font-size:12.5px}
+.skin-pop .seg button{padding:4px 12px;font-size:13px}
+.skin-pop .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.skin-pop .dot-c{width:22px;height:22px;border-radius:50%;padding:0;border:2px solid transparent}
+.skin-pop .dot-c.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--text)}
+
+/* 手機：分頁移到畫面底部 */
+@media (max-width:900px){
+  html.skin-new body{padding-bottom:70px}
+  html.skin-new header{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel)}
+  html.skin-new nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;justify-content:space-around;
+    background:color-mix(in srgb,var(--panel) 95%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border-top:1px solid var(--border);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  html.skin-new nav.tabs button,html.skin-new nav.tabs a.tab-link{flex-direction:column;gap:2px;font-size:11px;padding:5px 6px}
+  html.skin-new .toast{bottom:84px}
+  html.skin-new .rv-back{bottom:84px}
+  html.skin-new .note-peek{bottom:78px}
+  html.skin-new .aside-open{bottom:84px}
+  html.skin-new .kb-head h1{font-size:24px}
+  html.skin-new .card{padding:15px 15px 12px}
+}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1355,6 +1470,7 @@ body.guest #noteNew{display:none}
   <div class="spacer"></div>
   <span class="pill" id="queuePill">佇列 0</span>
   <button id="aiBtn" class="ai-btn" hidden title="在右側問 Claude（用你的訂閱額度）">✦ 問 AI</button>
+  <button id="skinBtn" class="skin-btn" title="切換新版／舊版外觀與主色">外觀</button>
   <button id="loginBtn" hidden>登入</button>
   <button class="gear" id="gearBtn" data-view="settings" title="設定與管理">⚙<span class="gear-dot" id="gearDot" hidden></span></button>
 </header>
@@ -1386,6 +1502,7 @@ body.guest #noteNew{display:none}
       <div class="kb-head">
         <h1 id="kbTitle">尚未選擇疾病主題</h1>
         <button id="topicEdit" class="title-edit" hidden title="修改主題名稱">✎ 改名</button>
+        <label id="numHlBox" class="read-toggle" title="把條目裡含數字的粗體（閾值、劑量）用主色標出來"><input type="checkbox" id="numHl"><span>標出數字</span></label>
         <label id="topicReadBox" class="read-toggle" hidden title="記錄你讀過這個主題"><input type="checkbox" id="topicRead"><span>已讀</span></label>
       </div>
       <div class="sub" id="kbSub"></div>
@@ -1875,13 +1992,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-65ad4ce7b1b1.js';
+    s.src = 'app-b86a3c339a12.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-65ad4ce7b1b1.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-b86a3c339a12.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-8cdba717fe39.json').then(function (r) {
