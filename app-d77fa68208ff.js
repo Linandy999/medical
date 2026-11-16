@@ -1040,6 +1040,7 @@ function renderCatNav(overview) {
 function syncReadBox() {
   const t = state.topics.find(x => x.id === state.topicId);
   $('#topicReadBox').hidden = !t;
+  $('#kbPrint').hidden = !t;
   $('#topicRead').checked = !!(t && t.is_read);
 }
 $('#topicRead').onchange = async () => {
@@ -1301,11 +1302,11 @@ function renderEntry(e, srcLabel) {
       </div>` : ''}
     ${renderFigures(e.figures, e.id)}
     <div class="act">
-      <button data-src-btn="${e.id}">查看原文出處</button>
-      <button data-note-btn="${e.id}">為此段落加筆記</button>
-      ${state.isAdmin ? `<button data-askai-entry="${e.id}">問 AI</button>` : ''}
-      ${state.isAdmin ? `<button data-edit-btn="${e.id}">編輯文字</button>` : ''}
-      ${state.isAdmin ? `<button data-addfig="${e.id}">加入圖片</button>` : ''}
+      <button data-src-btn="${e.id}" title="查看原文出處">查看原文出處</button>
+      <button data-note-btn="${e.id}" title="為此段落加筆記">為此段落加筆記</button>
+      ${state.isAdmin ? `<button data-askai-entry="${e.id}" title="問 AI">問 AI</button>` : ''}
+      ${state.isAdmin ? `<button data-edit-btn="${e.id}" title="編輯文字">編輯文字</button>` : ''}
+      ${state.isAdmin ? `<button data-addfig="${e.id}" title="加入圖片">加入圖片</button>` : ''}
       ${state.isAdmin && e.edited_at ? `<button data-revert-btn="${e.id}" class="link-btn">還原成匯入時的內容</button>` : ''}
     </div></div>`;
 }
@@ -2185,6 +2186,9 @@ async function initExams() {
   loadExamTable();
   loadExamQuestions(false);
 }
+function markExamChips() {
+  $$('[data-exchip]').forEach(c => c.classList.toggle('on', (c.dataset.exchip || null) == (state.examFilterId || null)));
+}
 async function loadExamTable() {
   const { exams } = await api('/exams');
   $('#examTable').innerHTML = !exams.length
@@ -2194,8 +2198,15 @@ async function loadExamTable() {
         <td class="small"><b>${e.roc_year ? (e.session_no ? e.roc_year + '-' + e.session_no : e.roc_year) : (e.year || '—')}</b></td>
         <td><div class="small">${esc(e.category_name || '')}</div><div class="small muted">${esc(String(e.subject || '').slice(0, 46))}</div></td>
         <td><button data-exfilter="${e.id}">只看此卷</button></td>
-      </tr>`).join('')}</tbody></table>`;
-  $$('[data-exfilter]').forEach(b => b.onclick = () => { state.examFilterId = b.dataset.exfilter; loadExamQuestions(false); });
+      </tr>`).join('')}</tbody></table>
+      <div class="ex-chips"><button class="ex-chip" data-exchip="">全部考卷</button>${exams.map(e =>
+        `<button class="ex-chip" data-exchip="${e.id}" title="${esc((e.category_name || '') + ' ' + (e.subject || ''))}">${
+          e.roc_year ? (e.session_no ? e.roc_year + '-' + e.session_no : e.roc_year) : (e.year || '—')}</button>`).join('')}</div>`;
+  $$('[data-exchip]').forEach(b => b.onclick = () => {
+    state.examFilterId = b.dataset.exchip || null; markExamChips(); loadExamQuestions(false);
+  });
+  markExamChips();
+  $$('[data-exfilter]').forEach(b => b.onclick = () => { state.examFilterId = b.dataset.exfilter; markExamChips(); loadExamQuestions(false); });
 }
 const EXAM_PAGE = 60;
 function examQuery(offset) {
@@ -2248,7 +2259,7 @@ $('#exQ').oninput = debounce(() => loadExamQuestions(false), 320);
 ['#exYear', '#exSubject', '#exCat'].forEach(id => $(id).onchange = () => loadExamQuestions(false));
 $('#exClear').onclick = () => {
   ['#exQ', '#exYear', '#exSubject', '#exCat'].forEach(id => $(id).value = '');
-  state.examFilterId = null; loadExamQuestions(false);
+  state.examFilterId = null; markExamChips(); loadExamQuestions(false);
 };
 /* ================= 圖表總覽 =================
    341 張圖與上千張表本來只能靠捲動撞見；診斷流程圖是要成套看的，集中起來才有用。 */
@@ -4763,6 +4774,7 @@ async function rvQuizHome() {
   await rvQuestions();
   const wc = rvWrongCounts();
   const st = rvStore.get('stats', { done: 0, correct: 0 });
+  if (document.documentElement.classList.contains('skin-new')) { rvDashHome(box, wc, st); return; }
   box.innerHTML = `<div class="rv-home">
     <div class="rv-modes">
       <button data-mode="exam">考古題</button>
@@ -4774,6 +4786,40 @@ async function rvQuizHome() {
       · 錯題本：考古 <b>${wc.exam}</b>、抽考 <b>${wc.cloze}</b></div>
   </div>`;
   $$('[data-mode]', box).forEach(b => b.onclick = () => { RV.mode = b.dataset.mode; rvModeBody(); });
+  rvModeBody();
+}
+function rvDashHome(box, wc, st) {
+  const ms = rvStore.get('mstats', {}), pct = m => m && m.d ? Math.round(m.c * 100 / m.d) + '%' : '—';
+  const card = (mode, title, big, sub) => `<button class="rv-mcard" data-mode="${mode}">
+      <span class="rv-mt">${title}</span><span class="rv-mbig">${big}</span><span class="rv-msub">${sub}</span></button>`;
+  const ts = rvStore.get('tstats', {});
+  const recent = Object.entries(ts).map(([id, v]) => ({ id: +id, ...v })).filter(r => rvTopic(r.id))
+    .sort((a, b) => b.t - a.t).slice(0, 6);
+  const ago = t => { const d = Math.floor((Date.now() - t) / 864e5); return d <= 0 ? '今天' : d === 1 ? '昨天' : d + ' 天前'; };
+  box.innerHTML = `<div class="rv-home rv-dash">
+    <div class="rv-mcards">
+      ${card('exam', '考古題', pct(ms.exam), ms.exam ? `作答 ${ms.exam.d} 題的答對率` : '還沒有作答紀錄')}
+      ${card('cloze', '內文抽考', pct(ms.cloze), ms.cloze ? `作答 ${ms.cloze.d} 題的答對率` : '依主題出國考風格題')}
+      ${card('wrong', '錯題本', String(wc.exam + wc.cloze), `考古 ${wc.exam}・抽考 ${wc.cloze}`)}
+    </div>
+    <div class="rv-panel-box"><div id="rvModeBody"></div></div>
+    ${recent.length ? `<div class="rv-recent"><div class="rv-rh">最近練習的主題</div>
+      ${recent.map(r => { const p = r.d ? Math.round(r.c * 100 / r.d) : 0;
+        return `<button class="rv-rrow" data-rtopic="${r.id}" data-rk="${r.k || 'exam'}">
+          <span class="rv-rname">${esc(rvTopic(r.id).name)}</span>
+          <span class="rv-rbar"><i style="width:${p}%"></i></span>
+          <span class="rv-rpct">${p}%</span><span class="rv-rmeta">${r.d} 題・${ago(r.t)}</span></button>`; }).join('')}</div>` : ''}
+    <div class="rv-stat">累計作答 <b>${st.done}</b> 題・整體答對率 <b>${st.done ? Math.round(st.correct * 100 / st.done) : 0}%</b></div>
+  </div>`;
+  $$('[data-mode]', box).forEach(b => b.onclick = () => { RV.mode = b.dataset.mode; rvModeBody(); });
+  // 點最近的主題：把範圍預選成那個主題，按「開始／出題」就能接著練
+  $$('[data-rtopic]', box).forEach(b => b.onclick = () => {
+    const id = +b.dataset.rtopic;
+    if (b.dataset.rk === 'exam' && rvExamPool('t:' + id).length) { rvStore.set('lastScope', 't:' + id); RV.mode = 'exam'; }
+    else { rvStore.set('clozeTopic', id); RV.mode = 'cloze'; }
+    rvModeBody();
+    const body = $('#rvModeBody'); if (body) body.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
   rvModeBody();
 }
 function rvModeBody() {
@@ -5280,6 +5326,17 @@ function rvFeedback(it) {
         ${e.excerpt ? `<span class="rv-ent-ex">${esc(e.excerpt)}</span>` : ''}</a>`).join('')}</div>`
       : '<div class="muted small">這題還沒有連到知識庫的條目。</div>'}`;
 }
+/* 首頁儀表板用：分模式（考古／抽考）與分主題記錄作答，只存在這台裝置 */
+function rvLogAnswer(it, ok) {
+  const ms = rvStore.get('mstats', {}), k = it.type === 'exam' ? 'exam' : 'cloze';
+  const m = ms[k] || { d: 0, c: 0 }; m.d++; if (ok) m.c++; ms[k] = m; rvStore.set('mstats', ms);
+  const tids = it.type === 'exam' ? (it.q.topics || []).map(t => t.topic_id) : [it.c.topic_id];
+  const ts = rvStore.get('tstats', {}), now = Date.now();
+  [...new Set(tids.filter(Boolean))].forEach(id => {
+    const t = ts[id] || { d: 0, c: 0, t: 0 }; t.d++; if (ok) t.c++; t.t = now; t.k = k; ts[id] = t;
+  });
+  rvStore.set('tstats', ts);
+}
 function rvPick(val) {
   const Z = RV.quiz, it = Z.list[Z.i];
   if (Z.picked != null) return;
@@ -5288,6 +5345,7 @@ function rvPick(val) {
   Z.results.push({ it, ok });
   const st = rvStore.get('stats', { done: 0, correct: 0 });
   st.done++; if (ok) st.correct++; rvStore.set('stats', st);
+  rvLogAnswer(it, ok);
   if (it.type === 'exam') {
     const w = rvStore.get('wrong', {});
     if (!ok) w[it.q.id] = { n: ((w[it.q.id] || {}).n || 0) + 1, t: Date.now() };
@@ -5505,11 +5563,17 @@ function rvShowDrug(name, keepScroll) {
     pop.innerHTML = `<div class="row"><span>外觀</span><span class="seg">
         <button data-skin="new" class="${isNew ? 'on' : ''}">新版</button>
         <button data-skin="old" class="${isNew ? '' : 'on'}">舊版</button></span></div>
+      <div class="row"><span>字級</span><span class="seg">${[['s', '小'], ['m', '中'], ['l', '大']].map(([k, n]) =>
+          `<button data-fs="${k}" class="${(d.getAttribute('data-fs') || 'm') === k ? 'on' : ''}">${n}</button>`).join('')}</span></div>
       <div class="row"${isNew ? '' : ' hidden'}><span>主色</span>
         ${[['blue', '#2563eb', '藍'], ['teal', '#1e6f66', '青綠'], ['wine', '#8c2f22', '酒紅']].map(([k, c, n]) =>
           `<button class="dot-c ${ac === k ? 'on' : ''}" data-ac="${k}" title="${n}" style="background:${c}"></button>`).join('')}</div>`;
     pop.querySelectorAll('[data-skin]').forEach(b => b.onclick = () => {
       const on = b.dataset.skin === 'new'; d.classList.toggle('skin-new', on); ls.set('medkb.skin', on ? 'new' : 'old'); render();
+      if ($('#view-review').classList.contains('active') && !(RV.quiz && !RV.quiz.done)) rvQuizHome();
+    });
+    pop.querySelectorAll('[data-fs]').forEach(b => b.onclick = () => {
+      d.setAttribute('data-fs', b.dataset.fs); ls.set('medkb.fs', b.dataset.fs); render();
     });
     pop.querySelectorAll('[data-ac]').forEach(b => b.onclick = () => {
       d.setAttribute('data-accent', b.dataset.ac); ls.set('medkb.accent', b.dataset.ac); render();
@@ -5527,18 +5591,20 @@ function rvShowDrug(name, keepScroll) {
   };
   document.addEventListener('click', () => { if (pop) { pop.remove(); pop = null; } });
 
-  // 標出數字：把含數字的粗體加上 b-num，勾選時才上色
-  const mark = () => $$('#kbBody .md strong:not(.b-num)').forEach(s => { if (/\d/.test(s.textContent)) s.classList.add('b-num'); });
-  let queued = false;
-  new MutationObserver(() => {
-    if (queued || !document.body.classList.contains('num-hl')) return;
-    queued = true; requestAnimationFrame(() => { queued = false; mark(); });
-  }).observe($('#kbBody'), { childList: true, subtree: true });
-  const box = $('#numHl');
-  if (box) {
-    box.checked = ls.get('medkb.numhl', '0') === '1';
-    const apply = () => { document.body.classList.toggle('num-hl', box.checked); if (box.checked) mark(); };
-    box.onchange = () => { ls.set('medkb.numhl', box.checked ? '1' : '0'); apply(); };
-    apply();
-  }
+})();
+
+
+/* ================= 列印講義 ================= */
+(function () {
+  // 列印：暫時展開收合的分類，標題改成主題名（存 PDF 時當檔名），印完復原
+  const pb = $('#kbPrint');
+  if (pb) pb.onclick = () => {
+    const folded = $$('#kbBody section.cat.folded');
+    folded.forEach(s => s.classList.remove('folded'));
+    const t0 = document.title;
+    document.title = ($('#kbTitle').textContent || '講義').trim();
+    const done = () => { folded.forEach(s => s.classList.add('folded')); document.title = t0; removeEventListener('afterprint', done); };
+    addEventListener('afterprint', done);
+    setTimeout(() => window.print(), 50);
+  };
 })();

@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="MedCalc">
 <title>MedCalc 醫學計算機</title>
+<script>(function(){var d=document.documentElement,sk='new',c='blue';
+try{sk=localStorage.getItem('medkb.skin')||'new';c=localStorage.getItem('medkb.accent')||'blue';}catch(e){}
+if(sk==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);})();</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -110,6 +113,74 @@ select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:1
 .tiers div.on{background:var(--accent-soft);font-weight:500}
 .abx-note{font-size:13px;margin-top:6px;padding:8px 10px;background:var(--warn-bg);color:var(--warn);border-radius:8px}
 .disclaimer{font-size:12px;color:var(--muted);text-align:center;margin-top:28px}
+
+/* ================= 新版外觀（跟知識庫的「外觀」設定同步，舊版時整段不生效）================= */
+html.skin-new{--bg:#f6f1e7;--card:#fffdf8;--ink:#2a2420;--muted:#857a6c;--line:#e6dccb;--accent:#2563eb;--accent-soft:#e6ecfb;--soft2:#f1ebe0}
+html.skin-new[data-accent=teal]{--accent:#1e6f66;--accent-soft:#dfefeb}
+html.skin-new[data-accent=wine]{--accent:#8c2f22;--accent-soft:#f3e3d9}
+@media (prefers-color-scheme:dark){
+  html.skin-new{--bg:#1a1815;--card:#221f1b;--ink:#ece7de;--muted:#a39b8e;--line:#3a352e;--accent:#7aa2ff;--accent-soft:#1d2740;--soft2:#2b2722}
+  html.skin-new[data-accent=teal]{--accent:#5fbfae;--accent-soft:#183430}
+  html.skin-new[data-accent=wine]{--accent:#e58a7a;--accent-soft:#3a201d}
+}
+html.skin-new{--g0:#6b7a8f;--g1:#3f6fb0;--g2:#2f8a9a;--g3:#b4402f;--g4:#7d6aa8;--g5:#c0392b;--g6:#a8743a;--g7:#3f7a3a;--g8:#5a7fa8;--g9:#b0882a}
+html.skin-new .wrap{max-width:1080px;padding:26px 24px 70px}
+html.skin-new header.top{align-items:center;gap:12px;margin:0 0 18px}
+html.skin-new header.top::before{content:'';width:34px;height:34px;border-radius:10px;flex:none;
+  background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round'%3E%3Crect x='5' y='3' width='14' height='18' rx='2'/%3E%3Cpath d='M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 18h8'/%3E%3C/svg%3E") center/20px no-repeat}
+html.skin-new header.top h1{font-size:26px;font-weight:900}
+html.skin-new header.top span{font-size:14px}
+html.skin-new header.top a.kb{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 12px;font-weight:500}
+html.skin-new header.top a.kb:hover{border-color:var(--accent)}
+html.skin-new .search{padding:13px 16px 13px 42px;border-radius:14px;font-size:16px;box-shadow:0 1px 3px rgba(60,40,10,.05);
+  background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23857a6c' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") 14px center/18px no-repeat}
+html.skin-new .chips{flex-wrap:wrap;overflow:visible}
+html.skin-new .chip{font-size:13.5px;padding:6px 13px}
+html.skin-new .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+html.skin-new .group-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:900;color:var(--ink);margin:26px 2px 10px;letter-spacing:0}
+html.skin-new .group-title::before{content:'';width:12px;height:12px;border-radius:4px;background:var(--gc,var(--accent))}
+html.skin-new .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;background:none;border:none;border-radius:0;overflow:visible}
+html.skin-new .item{border:1px solid var(--line);border-left:4px solid var(--gc,var(--accent));border-radius:14px;background:var(--card);
+  padding:13px 12px 13px 15px;box-shadow:0 1px 3px rgba(60,40,10,.05);transition:transform .12s,box-shadow .12s}
+html.skin-new .item:first-child{border-top:1px solid var(--line)}
+html.skin-new .item:hover{background:var(--card);transform:translateY(-1px);box-shadow:0 6px 16px rgba(60,40,10,.09);border-color:var(--gc,var(--accent))}
+html.skin-new .item .n{font-weight:700}
+html.skin-new [data-g="一般"]{--gc:var(--g0)} html.skin-new [data-g="腎臟"]{--gc:var(--g1)}
+html.skin-new [data-g="電解質/輸液"]{--gc:var(--g2)} html.skin-new [data-g="輸血/白蛋白"]{--gc:var(--g3)}
+html.skin-new [data-g="酸鹼/呼吸"]{--gc:var(--g4)} html.skin-new [data-g="心血管"]{--gc:var(--g5)}
+html.skin-new [data-g="肝臟"]{--gc:var(--g6)} html.skin-new [data-g="感染/急重症"]{--gc:var(--g7)}
+html.skin-new [data-g="神經"]{--gc:var(--g8)} html.skin-new [data-g="藥物/抗生素"]{--gc:var(--g9)}
+html.skin-new .chip[data-cat]::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gc,transparent);margin-right:6px;vertical-align:.12em}
+html.skin-new .chip[data-cat="全部"]::before,html.skin-new .chip[data-cat="★ 常用"]::before{display:none}
+html.skin-new .star.on{color:#e0a516}
+
+/* 公式頁：電腦上左邊輸入、右邊結果（捲動時結果固定） */
+html.skin-new .back{font-weight:500}
+html.skin-new .dhead h2{font-size:26px;font-weight:900}
+html.skin-new .card{border-radius:16px;padding:18px 20px;box-shadow:0 1px 3px rgba(60,40,10,.05)}
+html.skin-new .dgrid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+html.skin-new .dgrid > .card{margin-top:14px}
+html.skin-new .dgrid > .result{position:sticky;top:16px;border-top:4px solid var(--accent)}
+html.skin-new .numrow input{background:var(--card);border-radius:10px}
+html.skin-new .numrow input:focus,html.skin-new select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+html.skin-new .seg button{background:var(--card)}
+html.skin-new .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+html.skin-new .chk input{accent-color:var(--accent)}
+html.skin-new .res-main .v{font-size:42px;color:var(--accent);font-weight:500}
+html.skin-new .rows{border-top:1px solid var(--line);padding-top:10px}
+html.skin-new .formula{background:var(--soft2)}
+html.skin-new .info h3{color:var(--ink);font-weight:700;font-size:14.5px}
+html.skin-new .abx-c{color:var(--accent);background:var(--accent-soft)}
+html.skin-new .tiers div.on{background:var(--accent-soft)}
+@media (max-width:820px){
+  html.skin-new .wrap{padding:18px 16px 60px}
+  html.skin-new .dgrid{grid-template-columns:1fr;gap:0}
+  html.skin-new .dgrid > .result{position:static}
+  html.skin-new .list{grid-template-columns:1fr;gap:8px}
+  html.skin-new .chips{flex-wrap:nowrap;overflow-x:auto}
+  html.skin-new header.top span{display:none}
+  html.skin-new header.top a.kb{margin-left:auto}
+}
 </style>
 </head>
 <body>
@@ -1103,7 +1174,7 @@ function renderHome() {
   app.innerHTML = `
     <header class="top"><h1>MedCalc</h1><span>臨床常用計算公式</span><a class="kb" href="${KB_HREF}">‹ 知識庫</a></header>
     <input class="search" id="q" type="search" placeholder="搜尋：eGFR、鈉、QTc、肝…" value="${esc(query)}">
-    <div class="chips">${cats.map(c => `<button class="chip ${c === filterCat ? 'on' : ''}" data-cat="${c}">${c}</button>`).join('')}</div>
+    <div class="chips">${cats.map(c => `<button class="chip ${c === filterCat ? 'on' : ''}" data-cat="${c}" data-g="${c}">${c}</button>`).join('')}</div>
     <div id="lists"></div>
     <p class="disclaimer">本工具僅供教學與臨床參考，不能取代臨床判斷。使用前請確認單位與適用族群。</p>`;
   const q = document.getElementById('q');
@@ -1124,8 +1195,8 @@ function renderLists() {
   }
   const groups = filterCat === '全部' || filterCat === '★ 常用' ? CATS.filter(c => items.some(i => i.cat === c)) : [filterCat];
   box.innerHTML = groups.map(g => `
-    <div class="group-title">${g}</div>
-    <div class="list">${items.filter(i => i.cat === g).map(i => `
+    <div class="group-title" data-g="${g}">${g}</div>
+    <div class="list" data-g="${g}">${items.filter(i => i.cat === g).map(i => `
       <a class="item" href="#${i.id}">
         <div class="t"><div class="n">${i.name}</div><div class="e">${i.en}</div></div>
         <button class="star ${favs.includes(i.id) ? 'on' : ''}" data-fav="${i.id}" aria-label="加入常用">${favs.includes(i.id) ? '★' : '☆'}</button>
@@ -1151,8 +1222,8 @@ function renderDetail(c) {
     <button class="back" id="back">‹ 所有公式</button>
     <div class="dhead"><div style="flex:1"><h2>${c.name}</h2><div class="e">${c.en}</div></div>
       <button class="star ${favs.includes(c.id) ? 'on' : ''}" id="fav">${favs.includes(c.id) ? '★' : '☆'}</button></div>
-    <div class="card">${c.inputs.map(field).join('')}</div>
-    <div class="card result" id="res"></div>
+    <div class="dgrid"><div class="card">${c.inputs.map(field).join('')}</div>
+    <div class="card result" id="res"></div></div>
     <div class="card info">
       <h3>公式</h3><pre class="formula">${c.formula}</pre>
       ${c.note ? `<h3>臨床提醒</h3><p class="note">${c.note}</p>` : ''}

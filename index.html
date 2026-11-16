@@ -6,7 +6,7 @@
 <title>醫學文獻知識庫</title>
 <script>(function(){var d=document.documentElement,s='new',c='blue';
 try{s=localStorage.getItem('medkb.skin')||'new';c=localStorage.getItem('medkb.accent')||'blue';}catch(e){}
-if(s==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);})();</script>
+if(s==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);try{d.setAttribute('data-fs',localStorage.getItem('medkb.fs')||'m');}catch(e){}})();</script>
 <style>/* 「暖紙」配色：米白底、暖墨色字、墨綠主色。
    全站顏色都走這裡的變數，所以只改這兩塊就會整站生效（含重點框、表格、標籤）。 */
 :root{
@@ -1404,9 +1404,6 @@ html.skin-new .md tbody tr:nth-child(even) td{background:color-mix(in srgb,var(-
 html.skin-new .md td:first-child,html.skin-new .md th:first-child{position:sticky;left:0;z-index:1;font-weight:600}
 html.skin-new .md tbody tr:nth-child(odd) td:first-child{background:var(--panel)}
 
-/* 粗體：平常就是一般粗體；勾「標出數字」才把含數字的粗體標成主色 */
-html.skin-new .md strong{font-weight:700}
-body.num-hl .md strong.b-num{color:var(--accent);background:var(--accent-soft);padding:0 4px;border-radius:5px}
 
 /* 相關考古題摺疊 */
 html.skin-new .exam-block{border-radius:12px;background:var(--panel)}
@@ -1437,6 +1434,86 @@ html.skin-new .exam-block > summary{color:var(--accent)}
   html.skin-new .aside-open{bottom:84px}
   html.skin-new .kb-head h1{font-size:24px}
   html.skin-new .card{padding:15px 15px 12px}
+}
+
+/* ---------- 2026-11-17：字級（新舊外觀都適用） ---------- */
+html[data-fs=s] .md{font-size:15px}
+html[data-fs=l] .md{font-size:18px;line-height:2}
+html[data-fs=l] .md table{font-size:16px}
+
+/* ---------- 新版：複習首頁儀表板 ---------- */
+.rv-mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.rv-mcard{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:16px 18px;
+  border:1px solid var(--border);border-radius:16px;background:var(--panel);box-shadow:0 1px 3px rgba(60,40,10,.05)}
+.rv-mcard:hover{border-color:var(--accent);color:inherit}
+.rv-mcard.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft),0 4px 14px color-mix(in srgb,var(--accent) 18%,transparent)}
+.rv-mt{font-size:14px;font-weight:700;color:var(--muted)}
+.rv-mcard.active .rv-mt{color:var(--accent)}
+.rv-mbig{font-size:30px;font-weight:900;line-height:1.25;font-variant-numeric:tabular-nums}
+.rv-msub{font-size:12.5px;color:var(--muted)}
+.rv-panel-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:18px}
+.rv-panel-box .rv-form{margin:0}
+.rv-recent{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:10px 8px;margin-bottom:14px}
+.rv-rh{font-size:13px;font-weight:700;color:var(--muted);padding:4px 10px 8px}
+.rv-rrow{display:grid;grid-template-columns:minmax(0,1fr) 120px 44px 92px;align-items:center;gap:12px;width:100%;
+  border:none;background:none;text-align:left;padding:8px 10px;border-radius:10px}
+.rv-rrow:hover{background:var(--panel-2);color:inherit}
+.rv-rname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rv-rbar{height:6px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.rv-rbar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.rv-rpct{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.rv-rmeta{font-size:12px;color:var(--muted);text-align:right}
+@media (max-width:700px){
+  .rv-mcards{grid-template-columns:1fr 1fr 1fr;gap:8px}.rv-mcard{padding:12px}.rv-mbig{font-size:22px}.rv-msub{display:none}
+  .rv-rrow{grid-template-columns:minmax(0,1fr) 60px 40px}.rv-rmeta{display:none}
+}
+
+/* ---------- 新版：考古題頁 ---------- */
+.ex-chips{display:none}
+html.skin-new #examTable table.grid{display:none}
+html.skin-new .ex-chips{display:flex;flex-wrap:wrap;gap:6px}
+html.skin-new .ex-chip{border-radius:999px;padding:4px 13px;font-size:13.5px;font-variant-numeric:tabular-nums;background:var(--panel)}
+html.skin-new .ex-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+html.skin-new #view-exams > h1{font-size:30px;font-weight:900}
+html.skin-new #view-exams > .toolbar{flex-wrap:nowrap}
+html.skin-new #view-exams > .toolbar select{max-width:150px;min-width:0}
+html.skin-new #view-exams > .toolbar #exQ{min-width:120px}
+html.skin-new #view-exams > .toolbar #exClear{flex:none;white-space:nowrap}
+html.skin-new #view-exams > .toolbar .spacer{display:none}
+html.skin-new #view-exams .box{border-radius:16px;background:var(--panel)}
+@media (max-width:900px){
+  html.skin-new #view-exams > .toolbar{flex-wrap:wrap}
+  html.skin-new #view-exams > .toolbar #exQ{flex:1 1 100%}
+  html.skin-new #view-exams > .toolbar select{flex:1;max-width:none}
+}
+
+
+
+/* 列印按鍵 */
+.kb-print{font-size:12.5px;padding:3px 10px}
+
+/* ---------- 列印講義（新舊外觀都適用） ---------- */
+@media print{
+  @page{margin:14mm 12mm}
+  html,body{background:#fff!important;color:#111}
+  header,aside,.aside-open,.aside-collapse,.toolbar,.sub-chips,#pageNoteFold,.kb-head button,.kb-head label,
+  .card .act,.exam-block,.toast,.rv-back,.note-peek,#hlToolbar,.skin-pop,.fold-caret,.ai-panel{display:none!important}
+  .layout{display:block}
+  main{padding:0!important;max-width:none!important}
+  .view:not(#view-kb){display:none!important}
+  .kb-head h1{font-size:22pt;margin:0 0 8pt}
+  section.cat{margin-bottom:14pt}
+  section.cat.folded > *{display:revert!important}
+  .cat-head{break-after:avoid;padding-bottom:4pt;margin-bottom:8pt}
+  .card,.src-group{box-shadow:none!important;background:#fff!important}
+  .card{padding:8pt 10pt;break-inside:auto}
+  .src-group{break-inside:auto}
+  .card .src{break-after:avoid}
+  .md{font-size:10.5pt!important;line-height:1.75}
+  .md table{display:table!important;font-size:9.5pt!important;overflow:visible}
+  .md tr{break-inside:avoid}
+  .md th:first-child,.md td:first-child{position:static!important}
+  mark.hl,.card,.cat-head h2::before{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
@@ -1470,7 +1547,7 @@ body.guest #noteNew{display:none}
   <div class="spacer"></div>
   <span class="pill" id="queuePill">佇列 0</span>
   <button id="aiBtn" class="ai-btn" hidden title="在右側問 Claude（用你的訂閱額度）">✦ 問 AI</button>
-  <button id="skinBtn" class="skin-btn" title="切換新版／舊版外觀與主色">外觀</button>
+  <button id="skinBtn" class="skin-btn" title="切換新版／舊版外觀、字級與主色">🎨 外觀</button>
   <button id="loginBtn" hidden>登入</button>
   <button class="gear" id="gearBtn" data-view="settings" title="設定與管理">⚙<span class="gear-dot" id="gearDot" hidden></span></button>
 </header>
@@ -1502,7 +1579,7 @@ body.guest #noteNew{display:none}
       <div class="kb-head">
         <h1 id="kbTitle">尚未選擇疾病主題</h1>
         <button id="topicEdit" class="title-edit" hidden title="修改主題名稱">✎ 改名</button>
-        <label id="numHlBox" class="read-toggle" title="把條目裡含數字的粗體（閾值、劑量）用主色標出來"><input type="checkbox" id="numHl"><span>標出數字</span></label>
+        <button id="kbPrint" class="kb-print" hidden title="把這個主題排成講義，可以列印或存成 PDF">列印／PDF</button>
         <label id="topicReadBox" class="read-toggle" hidden title="記錄你讀過這個主題"><input type="checkbox" id="topicRead"><span>已讀</span></label>
       </div>
       <div class="sub" id="kbSub"></div>
@@ -1978,12 +2055,12 @@ body.guest #noteNew{display:none}
     + '<div class="boot-bar"><i id="bootBar"></i></div></div>';
   document.body.appendChild(box);
   var msg = document.getElementById('bootMsg'), bar = document.getElementById('bootBar');
-  var TOTAL = 2987645;                      // 未壓縮的位元組數，匯出時就算好了
+  var TOTAL = 2987631;                      // 未壓縮的位元組數，匯出時就算好了
   function mb(n) { return (n / 1048576).toFixed(1); }
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-8cdba717fe39.json</div>'
+      + '<div class="boot-detail">網址：data-e7d1feb5ed97.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -1992,16 +2069,16 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-b86a3c339a12.js';
+    s.src = 'app-d77fa68208ff.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-b86a3c339a12.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-d77fa68208ff.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-8cdba717fe39.json').then(function (r) {
+  fetch('data-e7d1feb5ed97.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
@@ -2022,8 +2099,8 @@ body.guest #noteNew{display:none}
     // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
     // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
     if (window.caches) {
-      caches.open('medkb-8cdba717fe39').then(function (c) {
-        c.put('data-8cdba717fe39.json', new Response(text, {
+      caches.open('medkb-e7d1feb5ed97').then(function (c) {
+        c.put('data-e7d1feb5ed97.json', new Response(text, {
           headers: { 'Content-Type': 'application/json' } }));
       }).catch(function () {});
     }

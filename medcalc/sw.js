@@ -1,5 +1,5 @@
 // MedCalc service worker：離線可用。更新內容時請把 VERSION 改掉。
-const VERSION = 'medcalc-v1';
+const VERSION = 'medcalc-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
