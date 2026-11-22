@@ -28,6 +28,30 @@
     }
     return shardCache.get(tid);
   }
+  /* 總覽提速：大份資料（考題、圖表索引…）在 DB.rest 指的檔案裡，背景下載後併回 DB。
+     單檔內嵌版沒有 DB.rest，全部資料本來就在。 */
+  let restP = null;
+  function loadRest() {
+    if (!DB.rest) return Promise.resolve();
+    if (!restP) {
+      const url = DB.rest;
+      restP = realFetch(url).then(r => {
+        if (!r.ok) throw new Error('資料載入失敗（HTTP ' + r.status + '）');
+        return r.text();
+      }).then(text => {
+        // service worker 可能還沒接管這一頁，自己放進快取，下次就不必再抓
+        if (window.caches && DB.cache_ver) caches.open('medkb-' + DB.cache_ver)
+          .then(c => c.put(url, new Response(text, { headers: { 'Content-Type': 'application/json' } }))).catch(() => {});
+        Object.assign(DB, JSON.parse(text)); delete DB.rest;
+      }).catch(err => { restP = null; throw err; });
+    }
+    return restP;
+  }
+  // 這些端點只用核心資料，不必等大份資料
+  const FAST = new Set(['/access', '/categories', '/highlight-colors', '/topics', '/pages', '/exam-stats',
+    '/notes', '/highlights', '/highlights/orphans', '/knowledge', '/topics/:id/overview', '/exams',
+    '/exam-filters', '/images-index', '/review/drugs']);
+  setTimeout(() => loadRest().catch(() => {}), 300);
   const CATS = DB.categories || [];
   const nameOf = s => (CATS.find(c => c.slug === s) || {}).name || s;
   const lc = s => String(s == null ? '' : s).toLowerCase();
@@ -403,10 +427,10 @@
       return { status: 401, body: { detail: '這是唯讀的公開版本，無法修改內容' } };
     }
     const qs = new URLSearchParams(search || '');
-    if (R[path]) return ok(await R[path](qs, null));
+    if (R[path]) { if (!FAST.has(path)) await loadRest(); return ok(await R[path](qs, null)); }
     for (const d of DYNAMIC) {
       const m = path.match(d.re);
-      if (m) return ok(await R[d.key](qs, m));
+      if (m) { if (!FAST.has(d.key)) await loadRest(); return ok(await R[d.key](qs, m)); }
     }
     return { status: 404, body: { detail: '唯讀版本沒有這個端點：' + path } };
   }
@@ -5593,11 +5617,14 @@ function rvShowDrug(name, keepScroll) {
     figs: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
     imgs: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
     pubmed: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
-    calc: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/>',
+    calc: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/>',    ekg: '<path d="M2 12h4l2-5 4 10 3-7 2 2h5"/>',
   };
   const svg = p => `<span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
   $$('nav.tabs button[data-view]').forEach(b => { if (ICONS[b.dataset.view]) b.insertAdjacentHTML('afterbegin', svg(ICONS[b.dataset.view])); });
-  const cl = $('#calcTabLink'); if (cl) cl.insertAdjacentHTML('afterbegin', svg(ICONS.calc));
+  // 「其他網站」的開合狀態記住
+  const os = $('#otherSites');
+  if (os) { try { if (localStorage.getItem('otherSitesShut')) os.open = false; } catch (e) { }
+    os.addEventListener('toggle', () => { try { localStorage.setItem('otherSitesShut', os.open ? '' : '1'); } catch (e) { } }); }
 
   // 外觀選單
   const btn = $('#skinBtn'); let pop = null;

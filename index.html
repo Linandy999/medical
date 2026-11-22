@@ -1523,6 +1523,25 @@ html.boot-ov aside,html.boot-ov .aside-open{display:none !important}
 html.boot-ov .layout{grid-template-columns:1fr}
 html.boot-ov nav.tabs button[data-view="kb"],html.boot-ov nav.tabs button[data-view="figs"],html.boot-ov .page-chip,html.boot-ov .only-page{display:none}
 
+/* 總覽最下方的「其他網站」 */
+.other-sites .os-grid{margin:2px 0 14px}
+a.page-card.os-card{display:block;text-decoration:none;color:inherit}
+a.page-card.os-card .pc-note{margin-bottom:0}
+.os-card .os-ext{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.os-card .os-ico{width:28px;height:28px;display:block}
+
+/* 影像頁最下方的外部資源連結 */
+a.ext-res{display:flex;align-items:center;gap:14px;margin:26px 0 10px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;
+  background:var(--panel);color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+a.ext-res:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.08)}
+a.ext-res .er-ico{flex:none;width:40px;height:40px;border-radius:10px;background:#1f2b36;color:#fff;display:flex;align-items:center;justify-content:center}
+a.ext-res .er-ico svg{width:24px;height:24px}
+a.ext-res .er-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+a.ext-res .er-txt b{font-size:16px}
+a.ext-res .er-txt span{font-size:12.5px;color:var(--muted)}
+a.ext-res .er-go{flex:none;font-size:13px;color:var(--accent);white-space:nowrap}
+.os-card .os-line{width:28px;height:28px;display:block;color:var(--pc)}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1545,7 +1564,6 @@ body.guest #noteNew{display:none}
     <button data-view="figs">圖表</button>
     <button data-view="imgs">影像</button>
     <button data-view="pubmed" id="pmTabBtn" hidden title="直接查 PubMed，不耗 AI 額度">PubMed</button>
-    <a class="tab-link" id="calcTabLink" href="medcalc/" title="臨床計算機：公式、輸液、電解質、輸血、評分、抗生素劑量">計算機</a>
   </nav>
   <div class="page-chip" id="pageChip" title="切換子頁">
     <span class="pc-icon" id="pcIcon">📚</span>
@@ -1578,6 +1596,21 @@ body.guest #noteNew{display:none}
       </div>
       <div class="page-grid" id="pageGrid"></div>
       <details class="exam-rank" id="examRank" hidden></details>
+      <!-- 其他網站：獨立的子網站，可收合（開合狀態記在 localStorage） -->
+      <details class="exam-rank other-sites" id="otherSites" open>
+        <summary><b>其他網站</b></summary>
+        <div class="page-grid os-grid">
+          <a class="page-card os-card" id="calcCard" href="medcalc/" style="--pc:#0f6b5c">
+            <div class="pc-top"><span class="pc-emoji"><svg class="os-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></svg></span><span class="pc-name">計算機</span></div>
+            <div class="pc-note">臨床計算公式、輸液、電解質、輸血、評分、抗生素劑量</div></a>
+          <a class="page-card os-card" id="ekgCard" href="ekg/" style="--pc:#c0392b">
+            <div class="pc-top"><span class="pc-emoji"><svg class="os-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l2-5 4 10 3-7 2 2h5"/></svg></span><span class="pc-name">EKG判讀</span></div>
+            <div class="pc-note">心電圖判讀筆記：結構、傳導、冠心病、離子與判讀順序</div></a>
+          <a class="page-card os-card" id="extFuel" href="https://ericyang2001.github.io/medical/" target="_blank" rel="noopener" style="--pc:#24493d">
+            <div class="pc-top"><span class="pc-emoji"><svg class="os-ico" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#24493d"/><path d="M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z" fill="#efe6cc"/></svg></span><span class="pc-name">醫學加油站</span><span class="os-ext">外部網站 ↗</span></div>
+            <div class="pc-note">Eric Yang 的醫學學習書房，教材與筆記收藏</div></a>
+        </div>
+      </details>
 
     </div>
 
@@ -1684,6 +1717,12 @@ body.guest #noteNew{display:none}
         <button class="primary" id="imgUpload">⬆ 上傳影像</button>
       </div>
       <div id="imgBody"></div>
+      <!-- 外部影像資源 -->
+      <a class="ext-res" href="https://radiopaedia.org/" target="_blank" rel="noopener">
+        <span class="er-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4.5"/><path d="M12 7.5v9M7.5 12h9"/></svg></span>
+        <span class="er-txt"><b>Radiopaedia</b><span>放射影像病例與教學資料庫，查不到的影像可以來這裡找</span></span>
+        <span class="er-go">前往 ↗</span>
+      </a>
     </div>
 
     <div class="view" id="view-pubmed">
@@ -2055,6 +2094,9 @@ body.guest #noteNew{display:none}
 </style>
 <script>
 (function () {
+  var pre = document.createElement('link');
+  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-39a0c77b418e.js';
+  document.head.appendChild(pre);
   var box = document.createElement('div');
   box.id = 'bootBox';
   box.innerHTML = '<div class="boot-inner"><div class="boot-title">醫學文獻知識庫</div>'
@@ -2062,12 +2104,12 @@ body.guest #noteNew{display:none}
     + '<div class="boot-bar"><i id="bootBar"></i></div></div>';
   document.body.appendChild(box);
   var msg = document.getElementById('bootMsg'), bar = document.getElementById('bootBar');
-  var TOTAL = 3041573;                      // 未壓縮的位元組數，匯出時就算好了
+  var TOTAL = 234332;                      // 未壓縮的位元組數，匯出時就算好了
   function mb(n) { return (n / 1048576).toFixed(1); }
   function fail(what, detail) {
     bar.parentNode.style.display = 'none';
     msg.innerHTML = '<b>' + what + '</b><div class="boot-detail">' + detail + '</div>'
-      + '<div class="boot-detail">網址：data-faf2dbb32a95.json</div>'
+      + '<div class="boot-detail">網址：data-78eb6fd6dfdf.json</div>'
       + '<button class="boot-retry" onclick="location.reload()">重新載入</button>'
       + '<div class="boot-hint">若在醫院或公司網路，請換手機網路再試一次——'
       + '部分機構會擋掉 github.io。</div>';
@@ -2076,16 +2118,16 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-0b33e44b8a72.js';
+    s.src = 'app-39a0c77b418e.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-0b33e44b8a72.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-39a0c77b418e.js 取不到'); };
     document.body.appendChild(s);
   }
-  fetch('data-faf2dbb32a95.json').then(function (r) {
+  fetch('data-78eb6fd6dfdf.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     if (!r.body || !r.body.getReader) return r.text();   // 舊瀏覽器：沒有進度就直接等
     var reader = r.body.getReader(), chunks = [], got = 0;
@@ -2106,8 +2148,8 @@ body.guest #noteNew{display:none}
     // 自己寫進快取：service worker 是在這之後才註冊的，攔不到這一次下載。
     // 不補這一手，第一次造訪的 2.6 MB 會白抓，要到第二次才進得了快取。
     if (window.caches) {
-      caches.open('medkb-faf2dbb32a95').then(function (c) {
-        c.put('data-faf2dbb32a95.json', new Response(text, {
+      caches.open('medkb-78eb6fd6dfdf').then(function (c) {
+        c.put('data-78eb6fd6dfdf.json', new Response(text, {
           headers: { 'Content-Type': 'application/json' } }));
       }).catch(function () {});
     }
