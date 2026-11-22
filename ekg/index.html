@@ -131,6 +131,29 @@ mark.hl[data-c=b],#hlbar [data-c=b],#hlList i[data-c=b]{background:#b8dcff}
   ul,ol{padding-left:1.15em}
   header.top h1{font-size:24px}
 }
+
+/* ── 閱讀密度（2026-11-22）：字放大、行距拉開、項目之間留白、限制每行字數 ── */
+body{font-size:17px;line-height:1.95;letter-spacing:.02em}
+article{padding:12px 36px 36px}
+article>*{max-width:46em}
+article figure{max-width:none}
+ul,ol{padding-left:1.5em;margin:6px 0}
+li{margin:7px 0}
+li li{margin:5px 0}
+li>ul,li>ol{margin-top:4px}
+li.sec{margin-top:34px}
+li.sec>.lt{font-size:20px}
+li.sec>ul>li,li.sec>ol>li{margin-top:14px}
+p{margin:10px 0}
+p.note{padding:8px 14px;line-height:1.85}
+blockquote{margin:20px 0;padding:10px 16px}
+figure{margin:16px 0 20px}
+@media (max-width:860px){body{font-size:16.5px}article{padding:10px 18px 28px}}
+
+/* 補充／注：改用褐色，跟正文的黑、重點的綠分開 */
+:root{--note-ink:#8b5a1e}
+@media (prefers-color-scheme:dark){:root{--note-ink:#e2b273}}
+p.note,p.note strong{color:var(--note-ink)}
 </style>
 </head>
 <body>
