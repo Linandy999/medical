@@ -4667,8 +4667,8 @@ $('#pmReader').addEventListener('click', ev => {
     showView('kb');
     await loadTopics();
     if (loc.topic && state.topics.some(t => t.id === loc.topic)) {
-      await selectTopic(loc.topic);
-      restoreScroll();
+      if (loc.entry) jumpToEntry(loc.entry, loc.topic, { mark: loc.mark });
+      else { await selectTopic(loc.topic); restoreScroll(); }
     } else syncLocHash();
   } else {
     await loadTopics();
@@ -4681,8 +4681,12 @@ $('#pmReader').addEventListener('click', ev => {
 
 /* 重新整理停留在原主題：位置寫在網址 hash（replaceState，不增加瀏覽紀錄），捲動位置存在 sessionStorage */
 function readLocHash() {
-  const m = location.hash.match(/^#\/p\/(\d+)(?:\/t\/(\d+))?$/);
-  return m ? { page: +m[1], topic: m[2] ? +m[2] : null } : null;
+  // 藥物索引子網站連回來時會多帶 /e/條目/m/藥名：開好主題後直接跳到那則並標出藥名
+  const m = location.hash.match(/^#\/p\/(\d+)(?:\/t\/(\d+)(?:\/e\/(\d+)(?:\/m\/(.*))?)?)?$/);
+  if (!m) return null;
+  let mark = '';
+  try { mark = m[4] ? decodeURIComponent(m[4]) : ''; } catch (e) { }
+  return { page: +m[1], topic: m[2] ? +m[2] : null, entry: m[3] ? +m[3] : null, mark };
 }
 function syncLocHash() {
   const kb = $('#view-kb');
@@ -4701,7 +4705,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 
-/* ================= 複習：練習（考古題／內文抽考／錯題本）＋藥物索引 =================
+/* ================= 複習：練習（考古題／內文抽考／錯題本）；藥物索引已獨立成子網站 =================
    都只讀資料、進度存在這台裝置的瀏覽器（localStorage），
    所以本機版和公開的唯讀版行為一樣，不需要登入，也不會寫回資料庫。 */
 const RV = { tab: 'quiz', mode: 'exam', qs: null, topicsAll: null, pages: null, quiz: null,
@@ -4739,7 +4743,6 @@ async function initReview() {
   try {
     await rvTopics();
     if (RV.tab === 'quiz') rvQuizHome();
-    if (RV.tab === 'drugs') rvDrugsInit();
   } catch (e) { toast(e.message, true); }
 }
 function rvBindJumps(root) {
@@ -4747,7 +4750,7 @@ function rvBindJumps(root) {
     ev.preventDefault();
     // 記住捲動位置，按「回到…」時回到原處
     RV.backScroll = window.scrollY;
-    const from = RV.tab === 'drugs' ? '藥物索引' : '練習';
+    const from = '練習';
     jumpToEntry(+a.dataset.jump, +a.dataset.jumptopic, { mark: a.dataset.mark || '' });
     rvShowBack(from);
   });
@@ -5459,159 +5462,6 @@ function rvQuizEnd() {
     rvStartSession('cloze', await rvMakeSession(Z.topic, 10, m => { more.textContent = m; }), Z.topic);
   };
 }
-
-/* ---------- 藥物索引：依藥理類別分組 ---------- */
-async function rvDrugsInit() {
-  const box = $('#rv-drugs');
-  if (!RV.drugs) {
-    box.innerHTML = '<div class="empty-note">載入藥物索引…（第一次約 3 MB）</div>';
-    const d = await api('/review/drugs');
-    const classes = (d.classes || []).concat([{ key: '_none', name: '其他（未分類）', group: '其他', terms: [] }]);
-    const byCls = new Map(classes.map(c => [c.key, []]));
-    (d.drugs || []).forEach(x => byCls.get(x.cls || '_none').push(x));
-    byCls.forEach(lst => lst.sort((a, b) => (b.term - a.term) || (b.n_topics - a.n_topics) || a.name.localeCompare(b.name)));
-    RV.drugs = { list: d.drugs || [], classes, byCls, groups: [...new Set((d.groups || []).concat(['其他']))] };
-  }
-  box.innerHTML = `<div class="rv-drugs">
-    <div class="rv-dside">
-      <input id="rvDrugQ" placeholder="搜尋藥名或類別" autocomplete="off">
-      <div class="rv-dlist" id="rvDrugList"></div>
-    </div>
-    <div class="rv-dmain" id="rvDrugMain"><div class="empty-note">左邊依藥理類別排列，點類別看同類藥物各自出現在哪些章節；也可以直接搜尋藥名。<br>藥名取自條目裡的粗體英文藥名與內建的分類表，再到全文比對出現位置。</div></div>
-  </div>`;
-  $('#rvDrugQ').oninput = debounce(rvDrugList, 150);
-  rvDrugList();
-  if (RV.drugView) RV.drugView.cls ? rvShowClass(RV.drugView.cls, true) : rvShowDrug(RV.drugView.drug, true);
-}
-function rvDrugList() {
-  const D = RV.drugs, q = $('#rvDrugQ').value.trim().toLowerCase();
-  const el = $('#rvDrugList');
-  if (q) {
-    const cls = D.classes.filter(c => c.name.toLowerCase().includes(q) || (c.terms || []).some(t => t.includes(q)));
-    const drugs = D.list.filter(d => d.name.includes(q))
-      .sort((a, b) => (a.name.startsWith(q) ? 0 : 1) - (b.name.startsWith(q) ? 0 : 1) || b.n_topics - a.n_topics).slice(0, 200);
-    el.innerHTML = (cls.length ? `<div class="rv-dgh">類別</div>${cls.map(c =>
-        `<button class="rv-dcls" data-cls="${c.key}">${esc(c.name)}</button>`).join('')}` : '')
-      + `<div class="rv-dgh">藥名</div>` + (drugs.length ? drugs.map(d =>
-        `<button class="rv-dchip" data-drug="${esc(d.name)}">${esc(rvCap(d.name))}</button>`).join('') : '<div class="muted small">沒有符合的藥名</div>');
-  } else {
-    el.innerHTML = D.groups.map(g => {
-      const cs = D.classes.filter(c => c.group === g && (D.byCls.get(c.key) || []).length);
-      if (!cs.length) return '';
-      return `<div class="rv-dgh">${esc(g)}</div>` + cs.map(c =>
-        `<button class="rv-dcls${RV.drugView && RV.drugView.cls === c.key ? ' active' : ''}" data-cls="${c.key}">${esc(c.name)}</button>`).join('');
-    }).join('');
-  }
-  $$('[data-cls]', el).forEach(b => b.onclick = () => rvShowClass(b.dataset.cls));
-  $$('[data-drug]', el).forEach(b => b.onclick = () => rvShowDrug(b.dataset.drug));
-}
-// 藥名首字大寫；NSAID、PPI、SGLT2 這類縮寫總稱整個大寫
-const RV_ABBR = new Set(['nsaid', 'ppi', 'arb', 'ssri', 'snri', 'tca', 'doac', 'lmwh', 'sglt2', 'glp-1',
-  'ics', 'laba', 'lama', 'nrti', 'nnrti', 'dmard', 'ivig', 'ace inhibitor']);
-function rvCap(n) {
-  const s = String(n || '');
-  if (RV_ABBR.has(s)) return s === 'ace inhibitor' ? 'ACE inhibitor' : s.toUpperCase();
-  if (s === 'anti-tnf') return 'Anti-TNF';
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-/* 用藥總表：同一類的每個藥，在各主題寫到的劑量。
-   劑量是後端從「藥名後面緊接著的數字＋單位」抓出來的（review.py），
-   使用時機用主題＋段落名稱，再附上同一句裡藥名前面的情境。超過 20 列就拆成下一張。 */
-function rvDoseTables(members) {
-  const rows = [];
-  // 同一個藥在同一則條目只留一列：多個劑量合併在同一格，
-  // 「1 g」被「1 g（5–7 天）」包含這種只留較完整的那個
-  members.filter(d => !d.term).forEach(d => {
-    const seenDose = new Set();
-    d.refs.forEach(r => {
-      let ds = (r.doses || []).map(x => x.dose);
-      if (!ds.length) return;
-      ds = ds.filter((a, i) => !ds.some((b, j) => j !== i && b.length > a.length && b.includes(a)));
-      ds = [...new Set(ds)];
-      const key = r.topic_id + '|' + ds.join('；');
-      if (seenDose.has(key)) return;               // 同主題另一則條目寫了一模一樣的劑量也只留一列
-      seenDose.add(key);
-      rows.push({ drug: d.name, r, x: { dose: ds.join('；'), ctx: (r.doses[0] || {}).ctx || '' } });
-    });
-  });
-  if (!rows.length) return '<div class="muted small rv-nodose">這一類在內文裡沒有寫到具體劑量。</div>';
-  // 依藥分組，每張表最多 20 列；單一藥超過 20 列就自己拆
-  const tables = []; let cur = [];
-  let i = 0;
-  while (i < rows.length) {
-    let j = i; while (j < rows.length && rows[j].drug === rows[i].drug) j++;
-    const grp = rows.slice(i, j);
-    if (cur.length && cur.length + grp.length > 20) { tables.push(cur); cur = []; }
-    for (let k = 0; k < grp.length; k += 20) {
-      const part = grp.slice(k, k + 20);
-      if (cur.length + part.length > 20) { tables.push(cur); cur = []; }
-      cur = cur.concat(part);
-    }
-    i = j;
-  }
-  if (cur.length) tables.push(cur);
-  const one = (list, idx) => {
-    let prev = '';
-    return `<table class="rv-dose"><caption>用藥總表</caption>
-      <thead><tr><th>藥物</th><th>使用時機</th><th>劑量</th></tr></thead><tbody>
-      ${list.map(({ drug, r, x }) => {
-        const t = rvTopic(r.topic_id);
-        const name = drug === prev ? '' : esc(rvCap(drug)); prev = drug;
-        return `<tr data-jump="${r.entry_id}" data-jumptopic="${r.topic_id}" data-mark="${esc(drug)}" title="點了跳到原條目">
-          <td class="rv-dose-drug">${name}</td>
-          <td><b>${esc(t ? t.name : '')}</b><span class="muted"> · ${esc(stripOrdinal(r.section) || '')}</span>
-            ${x.ctx ? `<div class="rv-dose-ctx">${esc(x.ctx)}</div>` : ''}</td>
-          <td class="rv-dose-val">${esc(x.dose)}</td></tr>`;
-      }).join('')}</tbody></table>`;
-  };
-  return tables.map(one).join('');
-}
-function rvClassOf(key) { return RV.drugs.classes.find(c => c.key === key); }
-function rvDrugRefsHtml(d, limitTopics) {
-  const groups = new Map();
-  d.refs.forEach(r => { if (!groups.has(r.topic_id)) groups.set(r.topic_id, []); groups.get(r.topic_id).push(r); });
-  const re = new RegExp('(' + d.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?)', 'ig');
-  const hl = s => esc(s).replace(re, '<mark>$1</mark>');
-  return [...groups.entries()].map(([tid, refs]) => {
-    const t = rvTopic(tid);
-    return `<div class="rv-dgroup"><div class="rv-dtopic">${esc(t ? t.name : '主題 ' + tid)}
-      <span class="muted small">${t ? esc(rvPageName(t.page_id)) : ''}</span></div>
-      ${refs.map(r => `<a href="#" class="rv-dref" data-jump="${r.entry_id}" data-jumptopic="${r.topic_id}" data-mark="${esc(d.name)}">
-        <span class="rv-ent-sec">${esc(stripOrdinal(r.section) || '（未命名章節）')}<span class="muted small"> · ${esc(catName(r.category))}</span></span>
-        <span class="rv-ent-ex">${hl(r.snippet)}</span></a>`).join('')}</div>`;
-  }).join('');
-}
-function rvShowClass(key, keepScroll) {
-  RV.drugView = { cls: key };
-  const c = rvClassOf(key), members = RV.drugs.byCls.get(key) || [];
-    $('#rvDrugMain').innerHTML = `<h2 class="rv-dname">${esc(c.name)}</h2>
-    ${members.map(d => `<details class="rv-dsec"${members.length <= 3 ? ' open' : ''}>
-      <summary><b>${esc(rvCap(d.name))}</b>${d.term ? '（類別總稱）' : ''}</summary>
-      ${rvDrugRefsHtml(d)}</details>`).join('')}
-    ${rvDoseTables(members)}`;
-  const main = $('#rvDrugMain');
-  $$('[data-drug]', main).forEach(b => b.onclick = () => rvShowDrug(b.dataset.drug));
-  rvBindJumps(main);
-  $$('.rv-dcls').forEach(b => b.classList.toggle('active', b.dataset.cls === key));
-  if (!keepScroll) main.scrollIntoView({ block: 'start', behavior: 'smooth' });
-}
-function rvShowDrug(name, keepScroll) {
-  RV.drugView = { drug: name };
-  const d = RV.drugs.list.find(x => x.name === name);
-  if (!d) return;
-  const key = d.cls || '_none', c = rvClassOf(key);
-  const sib = (RV.drugs.byCls.get(key) || []).filter(x => x.name !== name);
-  $('#rvDrugMain').innerHTML = `<h2 class="rv-dname">${esc(rvCap(d.name))}</h2>
-    <div class="rv-dclsline">類別：<a href="#" data-cls="${key}">${esc(c ? c.name : '其他')}</a>
-      ${sib.length ? `· 同類：${sib.slice(0, 20).map(x => `<a href="#" data-drug="${esc(x.name)}">${esc(rvCap(x.name))}</a>`).join('、')}${sib.length > 20 ? '…' : ''}` : ''}</div>
-    ${rvDrugRefsHtml(d)}`;
-  const main = $('#rvDrugMain');
-  $$('[data-cls]', main).forEach(a => a.onclick = ev => { ev.preventDefault(); rvShowClass(a.dataset.cls); });
-  $$('[data-drug]', main).forEach(a => a.onclick = ev => { ev.preventDefault(); rvShowDrug(a.dataset.drug); });
-  rvBindJumps(main);
-  if (!keepScroll) main.scrollIntoView({ block: 'start', behavior: 'smooth' });
-}
-
 
 /* ================= 外觀切換（新版／舊版、主色）＋標出數字 =================
    新版樣式全掛在 html.skin-new 底下，切回舊版只是拿掉 class。設定存在這台裝置的瀏覽器。 */
