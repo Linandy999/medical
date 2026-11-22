@@ -4026,12 +4026,22 @@ function renderPageNote() {
   if (box.dataset.key !== key) { box.dataset.key = key; box.open = !!rest && (!state.topicId || !!topicNote); }
 }
 
+// 總覽科別卡片的英文科名（照子頁名稱對；新子頁沒對到就不顯示）
+const PAGE_EN = {
+  '心臟內科': 'Cardiology', '腎臟內科': 'Nephrology', '消化內科': 'Gastroenterology', '胸腔內科': 'Pulmonology',
+  '感染科（細菌）': 'Bacteriology', '感染科（病毒）': 'Virology',
+  '感染科（真菌）': 'Mycology', '風濕免疫': 'Rheumatology',
+  '內分泌': 'Endocrinology', '血液科': 'Hematology', '腫瘤科': 'Oncology', '家庭醫學': 'Family Medicine',
+  '神經科': 'Neurology', '精神科': 'Psychiatry',
+  '細菌學': 'Bacteriology', '病毒學': 'Virology', '真菌感染': 'Fungal Infections',
+};
+function pageEnName(n) { return PAGE_EN[String(n || '').trim()] || ''; }
 function renderPageGrid() {
   $('#pageGrid').innerHTML = state.pages.map(p => `
     <div class="page-card" data-page="${p.id}" style="--pc:${esc(p.color)}">
       <div class="pc-top">
         <span class="pc-emoji">${pageIconHtml(p, 34)}</span>
-        <span class="pc-name">${esc(p.name)}</span>
+        <span class="pc-name">${esc(p.name)}${pageEnName(p.name) ? `<small class="pc-en">${pageEnName(p.name)}</small>` : ''}</span>
         <button class="pc-edit" data-edit="${p.id}">編輯</button>
       </div>
       <div class="pc-stats">
