@@ -763,6 +763,7 @@ function showView(v) {
   if (v === 'notes') state.activeCat = '__notes';
   else if (state.activeCat === '__notes') state.activeCat = null;
   renderCatNav(state.overview.length ? state.overview : null);
+  syncLocHash();
 }
 $$('nav.tabs button, #gearBtn').forEach(b => b.onclick = () => {
   if (b.dataset.view === 'overview') state.scope = 'global';
@@ -899,7 +900,7 @@ function renderTopics() {
   $$('#topicTree .topic-row').forEach(el => el.onclick = () => {
     const onExams = $('#view-exams').classList.contains('active');
     if (+el.dataset.id === state.topicId) {   // 再點一次收合
-      state.topicId = null; state.overview = [];
+      state.topicId = null; state.overview = []; syncLocHash();
       renderTopics(); $('#kbBody').innerHTML = ''; $('#kbTitle').textContent = '尚未選擇疾病主題';
       state.topic = null; $('#topicEdit').hidden = true; $('#topicReadBox').hidden = true;
       if (onExams) loadExamQuestions(false);
@@ -1059,6 +1060,7 @@ $('#topicRead').onchange = async () => {
 
 async function selectTopic(id) {
   state.topicId = id;
+  syncLocHash();
   state.activeCat = null;
   state.sections = null;      // 先清掉上一個主題的，否則側欄會拿舊資料判斷哪些分類是空的
   state.filters = { q: '', category: '', document_id: '' };
@@ -4081,6 +4083,7 @@ async function openPage(pageId) {
   state.topicId = null;
   localStorage.setItem('pageId', String(pageId));
   renderPageSelect();
+  syncLocHash();
   // 圖表與影像本來就只顯示目前子頁的內容，換科別時留在原地重載就好，
   // 硬跳回知識庫等於每換一科就要重按一次分頁
   const v = ($$('nav.tabs button.active')[0] || {}).dataset?.view;
@@ -4618,10 +4621,49 @@ $('#pmReader').addEventListener('click', ev => {
   await loadAccess();
   setAside(localStorage.getItem('asideOpen') !== '0');
   await loadPages();
-  await loadTopics();
+  // 網址的 #/p/子頁/t/主題 記住目前讀到的主題：重新整理時回到同一個主題；
+  // 沒有這段（新開網站、或在總覽重新整理）就停在總覽。
+  const loc = readLocHash();
+  if (loc && state.pages.some(p => p.id === loc.page)) {
+    state.scope = 'page';
+    state.pageId = loc.page;
+    try { localStorage.setItem('pageId', String(loc.page)); } catch (e) { }
+    renderPageSelect();
+    showView('kb');
+    await loadTopics();
+    if (loc.topic && state.topics.some(t => t.id === loc.topic)) {
+      await selectTopic(loc.topic);
+      restoreScroll();
+    } else syncLocHash();
+  } else {
+    await loadTopics();
+    state.scope = 'global';
+    showView('overview');
+  }
   await refreshStatus();
   setInterval(refreshStatus, 4000);
 })();
+
+/* 重新整理停留在原主題：位置寫在網址 hash（replaceState，不增加瀏覽紀錄），捲動位置存在 sessionStorage */
+function readLocHash() {
+  const m = location.hash.match(/^#\/p\/(\d+)(?:\/t\/(\d+))?$/);
+  return m ? { page: +m[1], topic: m[2] ? +m[2] : null } : null;
+}
+function syncLocHash() {
+  const kb = $('#view-kb');
+  const onKb = kb && kb.classList.contains('active') && state.scope !== 'global';
+  const h = onKb && state.pageId ? `#/p/${state.pageId}` + (state.topicId ? `/t/${state.topicId}` : '') : '';
+  if (h !== location.hash) history.replaceState(null, '', h || location.pathname + location.search);
+}
+function restoreScroll() {
+  let y = 0;
+  try { y = +sessionStorage.getItem('kbScroll:' + location.hash) || 0; } catch (e) { }
+  if (y > 0) setTimeout(() => window.scrollTo(0, y), 150);
+}
+window.addEventListener('beforeunload', () => {
+  if (!location.hash) return;
+  try { sessionStorage.setItem('kbScroll:' + location.hash, String(window.scrollY)); } catch (e) { }
+});
 
 
 /* ================= 複習：練習（考古題／內文抽考／錯題本）＋藥物索引 =================
