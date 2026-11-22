@@ -80,11 +80,34 @@ details.dsec>.refs{padding:0 14px 10px}
 .grp{margin:12px 0 4px}
 .tp{font-weight:700;font-size:15.5px}
 .tp small{font-weight:400;color:var(--muted);font-size:12.5px;margin-left:8px}
-a.ref{display:block;text-decoration:none;color:inherit;padding:7px 12px;margin:5px 0;border-left:3px solid var(--line);border-radius:0 8px 8px 0;background:var(--row)}
-a.ref:hover{border-left-color:var(--accent);background:var(--accent-soft)}
-a.ref .sec{display:block;font-size:13.5px;color:var(--accent);font-weight:600}
-a.ref .sec small{color:var(--muted);font-weight:400}
-a.ref .ex{display:block;font-size:14.5px;line-height:1.75}
+.ref{padding:7px 12px;margin:5px 0;border-left:3px solid var(--line);border-radius:0 8px 8px 0;background:var(--row);cursor:pointer}
+.ref:hover{border-left-color:var(--accent)}
+.ref.open{border-left-color:var(--accent);background:var(--card);box-shadow:0 1px 6px rgba(0,0,0,.06);cursor:default}
+.ref.open .rhead{cursor:pointer}
+.rhead{display:flex;align-items:baseline;gap:10px}
+.ref .sec{flex:1;display:block;font-size:13.5px;color:var(--accent);font-weight:600}
+.ref .sec small{color:var(--muted);font-weight:400}
+.ref .sec::before{content:"▸";display:inline-block;margin-right:6px;color:var(--muted);transition:transform .15s}
+.ref.open .sec::before{transform:rotate(90deg)}
+.ref a.open{flex:none;font-size:12.5px;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 7px;background:var(--card)}
+.ref a.open:hover{color:var(--accent);border-color:var(--accent)}
+.ref .ex{display:block;font-size:14.5px;line-height:1.75}
+.full{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.md{font-size:15px;line-height:1.85}
+.md p{margin:6px 0}
+.md ul,.md ol{padding-left:1.4em;margin:4px 0}
+.md li{margin:2px 0}
+.md table{border-collapse:collapse;margin:8px 0;font-size:14px;display:block;overflow-x:auto;max-width:100%}
+.md th,.md td{border:1px solid var(--line);padding:5px 9px;vertical-align:top;text-align:left}
+.md th{background:var(--accent-soft)}
+.md blockquote{margin:8px 0;padding:6px 12px;border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0}
+.md blockquote.bq-red{border-left-color:#c0392b;background:color-mix(in srgb,#c0392b 10%,var(--card))}
+.md blockquote.bq-yellow{border-left-color:#c9a227;background:color-mix(in srgb,#c9a227 14%,var(--card))}
+.md details.md-fold{border:1px solid var(--line);border-radius:8px;padding:4px 10px;margin:8px 0}
+.md code{font-size:.9em;background:var(--row);padding:0 4px;border-radius:4px}
+.md a.dead{color:inherit;text-decoration:underline dotted}
+.list .gblk button{justify-content:flex-start}
+.list button .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--gc,var(--muted));margin-right:2px;align-self:center}
 mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
 table.dose{width:100%;border-collapse:collapse;margin:20px 0 6px;font-size:14.5px}
 table.dose caption{text-align:left;font-weight:700;color:var(--accent);padding:4px 0;font-size:16px}
@@ -142,6 +165,140 @@ small.np{font-size:.8em;font-weight:500;color:var(--muted);margin-left:1px}
 <button id="edge" title="收起／打開側欄" aria-label="收起或打開側欄"></button>
 <button id="top" title="回到頂端">↑</button>
 <script>
+const BQ_COLOR = { '藍': 'blue', '紅': 'red', '黃': 'yellow',
+                   blue: 'blue', red: 'red', yellow: 'yellow' };
+function tabsToMdTables(text) {
+  const lines = String(text).replace(/\r/g, '').split('\n');
+  const out = []; let i = 0;
+  const split = l => l.split('\t').map(c => c.replace(/\|/g, '\\|').trim());
+  while (i < lines.length) {
+    if (!lines[i].includes('\t')) { out.push(lines[i++]); continue; }
+    let j = i;
+    while (j < lines.length && lines[j].includes('\t')) j++;
+    const block = lines.slice(i, j);
+    if (block.length < 2) { out.push(...block); i = j; continue; }
+    const rows = block.map(split);
+    const n = Math.max(...rows.map(r => r.length));
+    if (n < 2) { out.push(...block); i = j; continue; }
+    if (rows[0].length === n - 1) rows[0].unshift('');
+    // 欄位不足的列：原本的對齊空白被壓成了 Tab 少一格，這時把「連續 2 個以上空白」當成欄界補回來
+    rows.forEach((r, k) => {
+      if (k === 0 || r.length >= n) return;
+      for (let c = 0; c < r.length && r.length < n; c++) {
+        const parts = r[c].split(/\s{2,}/).filter(Boolean);
+        if (parts.length > 1 && r.length - 1 + parts.length <= n) { r.splice(c, 1, ...parts); c += parts.length - 1; }
+      }
+    });
+    const line = r => '| ' + r.concat(Array(n - r.length).fill('')).join(' | ') + ' |';
+    out.push(line(rows[0]), '| ' + Array(n).fill('---').join(' | ') + ' |', ...rows.slice(1).map(line));
+    i = j;
+  }
+  return out.join('\n');
+}
+function md(src) {
+  if (!src) return '';
+  let text = String(src).replace(/\r/g, '');
+  if (text.includes('\t')) text = tabsToMdTables(text);   // 舊筆記裡 Tab 分隔的表格也能正常顯示
+  const lines = text.split('\n');
+  const out = []; let stack = [], tbl = null, quote = null, code = null;
+  const inline = t => esc(t)
+    .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+    .replace(/\\\|/g, '|')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // [詳見：某條目](#entry-條目id-主題id)：站內跳轉，點了捲到那一則（可跨主題）
+    .replace(/\[([^\]]+)\]\(#entry-(\d+)-(\d+)\)/g,
+             '<a href="#" class="entry-link" data-jump="$2" data-jumptopic="$3">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+    // [文字](/static/refs/檔名.pdf)：參考文件（PDF 放在 web/static/refs/）。
+    // 發布版由 publish.sh 把整個 refs 資料夾同步到網站的 refs/，所以連結改成相對路徑 refs/檔名
+    .replace(/\[([^\]]+)\]\(\/static\/refs\/([\w.\-]+)\)/g,
+             (m, t, f) => '<a href="' + (window.__MEDKB__ ? 'refs/' : '/static/refs/') + f
+               + '" target="_blank" rel="noreferrer">' + t + '</a>');
+  const closeList = () => { while (stack.length) out.push('</' + stack.pop() + '>'); };
+  const closeTbl = () => { if (tbl) { out.push('</tbody></table>'); tbl = null; } };
+  // 引言整段收集起來再遞迴丟回 md()，框內的表格與清單才不會被當成純文字
+  const closeQuote = () => {
+    if (!quote) return;
+    // 第一行寫 [!摺疊 標題] 就收成可展開的區塊。用途是「內容要保留、但預設別擋路」，
+    // 例如教科書裡有時效性的段落（疫苗清單、變異株名稱、EUA 狀態）——
+    // 刪掉會讓索引失真，攤開又容易被誤當成現況；收起來並在標題註明年份最剛好。
+    const fold = (quote[0] || '').match(/^\[!\s*(?:摺疊|折疊|fold)\s*(.*?)\s*\]\s*(.*)$/i);
+    if (fold) {
+      const title = fold[1] || '已收合的內容';
+      const rest = [fold[2], ...quote.slice(1)];
+      out.push('<details class="md-fold"><summary>' + inline(title) + '</summary>'
+               + '<div class="md-fold-body">' + md(rest.join('\n')) + '</div></details>');
+      quote = null;
+      return;
+    }
+    // 第一行寫 [!紅] / [!黃] 就換色；沒寫就是預設的藍色
+    let cls = '', body = quote;
+    const tag = (quote[0] || '').match(/^\[!\s*(藍|紅|黃|blue|red|yellow)\s*\]\s*(.*)$/i);
+    if (tag) {
+      cls = ' class="bq-' + BQ_COLOR[tag[1].toLowerCase()] + '"';
+      body = [tag[2], ...quote.slice(1)];
+    }
+    out.push('<blockquote' + cls + '>' + md(body.join('\n')) + '</blockquote>');
+    quote = null;
+  };
+  // 表格列：以沒被跳脫的 | 切格，欄數不足的補空格，避免一列比一列短
+  const splitRow = l => l.trim().replace(/\\\|/g, '\u0001').replace(/^\|/, '').replace(/\|$/, '')
+    .split('|').map(c => c.replace(/\u0001/g, '\\|').trim());
+  let width = 0;
+  const row = (cells, tag) => '<tr>' + Array.from({ length: width }, (_, k) =>
+    `<${tag}>${inline(cells[k] || '')}</${tag}>`).join('') + '</tr>';
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (code) {                                   // 程式碼區塊：原樣輸出，直到結尾的 ```
+      if (/^\s*```/.test(line)) { out.push('<pre><code>' + esc(code.join('\n')) + '</code></pre>'); code = null; }
+      else code.push(raw.replace(/\s+$/, ''));
+      continue;
+    }
+    if (/^\s*```/.test(line)) { closeQuote(); closeList(); closeTbl(); code = []; continue; }
+    const bq = line.match(/^\s*>\s?(.*)$/);
+    if (bq) {
+      if (!quote) { closeList(); closeTbl(); quote = []; }
+      quote.push(bq[1]);          // 只吃掉一個空格，框內縮排要留著
+      continue;
+    }
+    closeQuote();
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      if (/^[\s|:-]+$/.test(line)) continue;
+      const cells = splitRow(line);
+      if (!tbl) {
+        closeList();
+        width = cells.length;
+        out.push('<table><thead>' + row(cells, 'th') + '</thead><tbody>'); tbl = 1;
+      } else out.push(row(cells, 'td'));
+      continue;
+    }
+    closeTbl();
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { closeList(); out.push('<hr>'); continue; }
+    const li = line.match(/^(\s*)(?:([-*+])|(\d+)[.)])\s+(.*)$/);
+    if (li) {
+      const depth = Math.floor(li[1].replace(/\t/g, '  ').length / 2) + 1;
+      const type = li[2] ? 'ul' : 'ol';
+      while (stack.length > depth) out.push('</' + stack.pop() + '>');
+      if (stack.length === depth && stack[depth - 1] !== type) out.push('</' + stack.pop() + '>');
+      while (stack.length < depth) {
+        out.push(type === 'ol' ? `<ol start="${li[3]}">` : '<ul>');
+        stack.push(type);
+      }
+      out.push(`<li>${inline(li[4])}</li>`); continue;
+    }
+    closeList();
+    if (!line.trim()) continue;
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    out.push(h ? `<p><strong>${inline(h[2])}</strong></p>` : `<p>${inline(line)}</p>`);
+  }
+  if (code) out.push('<pre><code>' + esc(code.join('\n')) + '</code></pre>');
+  closeList(); closeTbl(); closeQuote();
+  return out.join('');
+}
+
 const KB = location.pathname.indexOf('/static/drugs') === 0 ? '/' : '../';
 document.getElementById('kbLink').href = KB;
 const $ = s => document.querySelector(s);
@@ -166,12 +323,16 @@ function nameHtml(n) {
   const i = n.indexOf('（');
   return i > 0 ? esc(n.slice(0, i)) + '<small class="np">' + esc(n.slice(i)) + '</small>' : esc(n);
 }
-// 收起來的藥物大類（側欄與首頁共用），記在這台裝置
-const shut = new Set((() => { try { return JSON.parse(localStorage.getItem('drugs.shut') || '[]'); } catch (e) { return []; } })());
-function toggleGroup(g) {
-  shut.has(g) ? shut.delete(g) : shut.add(g);
-  try { localStorage.setItem('drugs.shut', JSON.stringify([...shut])); } catch (e) { }
-  document.querySelectorAll('.gh.fold').forEach(h => { if (h.dataset.g === g) h.parentNode.classList.toggle('shut', shut.has(g)); });
+// 收起來的藥物大類：側欄與首頁各記各的（記在這台裝置）
+const loadSet = k => new Set((() => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } })());
+const SHUT = { side: loadSet('drugs.shut'), home: loadSet('drugs.shutHome') };
+const SHUT_KEY = { side: 'drugs.shut', home: 'drugs.shutHome' };
+const shut = SHUT.side;
+function toggleGroup(g, where, h) {
+  const set = SHUT[where];
+  set.has(g) ? set.delete(g) : set.add(g);
+  try { localStorage.setItem(SHUT_KEY[where], JSON.stringify([...set])); } catch (e) { }
+  h.parentNode.classList.toggle('shut', set.has(g));
 }
 const topic = id => D.topics[id] || null;
 const pageName = id => D.pages[id] || '';
@@ -208,14 +369,14 @@ function renderList() {
       return cs.length ? `<div class="gblk${shut.has(g) ? ' shut' : ''}" style="--gc:${gc(g)}"><div class="gh fold" data-g="${esc(g)}">${esc(g)}</div><div class="gbody">`
         + cs.map(c => clsBtn(c)).join('') + '</div></div>' : '';
     }).join('');
-    el.querySelectorAll('.gh.fold').forEach(h => h.onclick = () => toggleGroup(h.dataset.g));
+    el.querySelectorAll('.gh.fold').forEach(h => h.onclick = () => toggleGroup(h.dataset.g, 'side', h));
   }
   el.querySelectorAll('[data-cls]').forEach(b => b.onclick = () => go('c', b.dataset.cls));
   el.querySelectorAll('[data-drug]').forEach(b => b.onclick = () => go('d', b.dataset.drug));
 }
 function clsBtn(c) {
   const on = cur && cur[0] === 'c' && cur[1] === c.key ? ' on' : '';
-  return `<button class="${on.trim()}" data-cls="${c.key}" title="${esc(c.name)}"><span class="cn">${nameHtml(c.name)}</span></button>`;
+  return `<button class="${on.trim()}" data-cls="${c.key}" title="${esc(c.name)}" style="--gc:${gc(c.group)}"><i class="dot"></i><span class="cn">${nameHtml(c.name)}</span></button>`;
 }
 // 目前看的類別／藥名記在網址 hash：從知識庫按上一頁回來會停在原處
 function go(kind, key) {
@@ -238,17 +399,17 @@ function route() {
 }
 window.addEventListener('pagehide', () => { try { sessionStorage.setItem('drugScroll:' + location.hash, String(window.scrollY)); } catch (e) { } });
 document.addEventListener('click', ev => {   // 離開前記住捲動位置，從知識庫回來時接著看
-  if (ev.target.closest('a.ref,tr[data-href]')) try { sessionStorage.setItem('drugScroll:' + location.hash, String(window.scrollY)); } catch (e) { }
+  if (ev.target.closest('a.open,tr[data-href]')) try { sessionStorage.setItem('drugScroll:' + location.hash, String(window.scrollY)); } catch (e) { }
 }, true);
 
 function home() {
   $('#view').innerHTML = `${D.groups.map(g => {
       const cs = D.classes.filter(c => c.group === g && (byCls.get(c.key) || []).length);
-      return cs.length ? `<div class="gblk home${shut.has(g) ? ' shut' : ''}" style="--gc:${gc(g)}"><div class="gh fold" data-g="${esc(g)}">${esc(g)}</div><div class="ggrid gbody">${cs.map(c =>
+      return cs.length ? `<div class="gblk home${SHUT.home.has(g) ? ' shut' : ''}" style="--gc:${gc(g)}"><div class="gh fold" data-g="${esc(g)}">${esc(g)}</div><div class="ggrid gbody">${cs.map(c =>
         `<button data-cls="${c.key}"><b>${nameHtml(c.name)}</b></button>`).join('')}</div></div>` : '';
     }).join('')}`;
   $('#view').querySelectorAll('[data-cls]').forEach(b => b.onclick = () => go('c', b.dataset.cls));
-  $('#view').querySelectorAll('.gh.fold').forEach(h => h.onclick = () => toggleGroup(h.dataset.g));
+  $('#view').querySelectorAll('.gh.fold').forEach(h => h.onclick = () => toggleGroup(h.dataset.g, 'home', h));
 }
 function refsHtml(d) {
   const groups = new Map();
@@ -258,9 +419,10 @@ function refsHtml(d) {
   return [...groups.entries()].map(([tid, refs]) => {
     const t = topic(tid);
     return `<div class="grp"><div class="tp">${esc(t ? t[0] : '主題 ' + tid)}<small>${t ? esc(pageName(t[1])) : ''}</small></div>
-      ${refs.map(r => `<a class="ref" href="${kbHref(r, d.name)}">
-        <span class="sec">${esc(stripOrd(r.section) || '（未命名章節）')}<small> · ${esc(D.cats[r.category] || r.category || '')}</small></span>
-        <span class="ex">${hl(r.snippet)}</span></a>`).join('')}</div>`;
+      ${refs.map(r => `<div class="ref" data-tid="${r.topic_id}" data-eid="${r.entry_id}" data-drug="${esc(d.name)}">
+        <div class="rhead"><span class="sec">${esc(stripOrd(r.section) || '（未命名章節）')}<small> · ${esc(D.cats[r.category] || r.category || '')}</small></span>
+          <a class="open" href="${kbHref(r, d.name)}" target="_blank" rel="noopener" title="在新分頁開知識庫的原條目">原條目 ↗</a></div>
+        <span class="ex">${hl(r.snippet)}</span><div class="full" hidden></div></div>`).join('')}</div>`;
   }).join('');
 }
 // 用藥總表：同一類每個藥在各主題寫到的劑量（後端從藥名後緊接的數字＋單位抓出來），超過 20 列拆下一張
@@ -304,11 +466,57 @@ function doseTables(members) {
       }).join('')}</tbody></table>`;
   }).join('');
 }
+// 點出處：就地展開整則條目（依主題載入 e/t<主題>.json），再點一次收起
+const entryCache = new Map();
+function loadEntries(tid) {
+  if (!entryCache.has(tid)) entryCache.set(tid, fetch('e/t' + tid + '.json?v=8c19bbf99d61').then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).catch(e => { entryCache.delete(tid); throw e; }));
+  return entryCache.get(tid);
+}
+function markDrug(root, name) {
+  const re = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?', 'ig');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach(n => {
+    const t = n.textContent; re.lastIndex = 0;
+    if (!re.test(t)) return;
+    re.lastIndex = 0;
+    const f = document.createDocumentFragment(); let last = 0, m;
+    while ((m = re.exec(t))) {
+      f.appendChild(document.createTextNode(t.slice(last, m.index)));
+      const mk = document.createElement('mark'); mk.textContent = m[0]; f.appendChild(mk);
+      last = m.index + m[0].length;
+    }
+    f.appendChild(document.createTextNode(t.slice(last)));
+    n.replaceWith(f);
+  });
+}
+async function toggleRef(el) {
+  const full = el.querySelector('.full'), ex = el.querySelector('.ex');
+  if (el.classList.contains('open')) { el.classList.remove('open'); full.hidden = true; ex.hidden = false; return; }
+  el.classList.add('open');
+  if (!full.dataset.done) {
+    full.hidden = false; full.innerHTML = '<div class="muted">載入中…</div>';
+    try {
+      const ents = await loadEntries(el.dataset.tid), e = ents[el.dataset.eid];
+      if (!e) throw new Error('找不到這則條目');
+      full.innerHTML = '<div class="md">' + md(e[2]) + (e[3] ? md(e[3]) : '') + '</div>';
+      full.querySelectorAll('a[data-jump]').forEach(a => { a.removeAttribute('href'); a.classList.add('dead'); });
+      markDrug(full, el.dataset.drug);
+      full.dataset.done = '1';
+    } catch (err) { full.innerHTML = '<div class="muted">載入失敗：' + esc(err.message) + '</div>'; el.classList.remove('open'); return; }
+  }
+  full.hidden = false; ex.hidden = true;
+}
 function bindView() {
   const v = $('#view');
   v.querySelectorAll('[data-go-cls]').forEach(a => a.onclick = ev => { ev.preventDefault(); go('c', a.dataset.goCls); });
   v.querySelectorAll('[data-go-drug]').forEach(a => a.onclick = ev => { ev.preventDefault(); go('d', a.dataset.goDrug); });
-  v.querySelectorAll('tr[data-href]').forEach(tr => tr.onclick = () => { location.href = tr.dataset.href; });
+  v.querySelectorAll('tr[data-href]').forEach(tr => tr.onclick = () => window.open(tr.dataset.href, '_blank', 'noopener'));
+  v.querySelectorAll('div.ref').forEach(el => el.onclick = ev => {
+    if (ev.target.closest('a,.full')) return;
+    toggleRef(el);
+  });
 }
 function showClass(key) {
   const c = D.classes.find(x => x.key === key);
