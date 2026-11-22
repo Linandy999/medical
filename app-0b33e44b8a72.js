@@ -739,6 +739,7 @@ function md(src) {
    上方分頁：知識庫／考古題　　右上齒輪：設定與管理
    問答區（12）與筆記區（13）由左側分類架構清單觸發 */
 function showView(v) {
+  document.documentElement.classList.remove('boot-ov');
   $$('.view').forEach(el => el.classList.toggle('active', el.id === 'view-' + v));
   $$('nav.tabs button').forEach(x => x.classList.toggle('active', x.dataset.view === v));
   $('#gearBtn').classList.toggle('active', v === 'settings');

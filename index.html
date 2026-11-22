@@ -6,7 +6,7 @@
 <title>醫學文獻知識庫</title>
 <script>(function(){var d=document.documentElement,s='new',c='blue';
 try{s=localStorage.getItem('medkb.skin')||'new';c=localStorage.getItem('medkb.accent')||'blue';}catch(e){}
-if(s==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);try{d.setAttribute('data-fs',localStorage.getItem('medkb.fs')||'m');}catch(e){}})();</script>
+if(!/^#\/p\/\d+/.test(location.hash))d.classList.add('boot-ov');if(s==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);try{d.setAttribute('data-fs',localStorage.getItem('medkb.fs')||'m');}catch(e){}})();</script>
 <style>/* 「暖紙」配色：米白底、暖墨色字、墨綠主色。
    全站顏色都走這裡的變數，所以只改這兩塊就會整站生效（含重點框、表格、標籤）。 */
 :root{
@@ -1516,6 +1516,13 @@ html.skin-new #view-exams .box{border-radius:16px;background:var(--panel)}
   mark.hl,.card,.cat-head h2::before{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 
+/* 開站時網址沒有 #/p/… 就直接畫總覽，避免 JS 跑完前先閃出知識庫內文頁；showView 第一次執行時拿掉 */
+html.boot-ov #view-kb{display:none}
+html.boot-ov #view-overview{display:block}
+html.boot-ov aside,html.boot-ov .aside-open{display:none !important}
+html.boot-ov .layout{grid-template-columns:1fr}
+html.boot-ov nav.tabs button[data-view="kb"],html.boot-ov nav.tabs button[data-view="figs"],html.boot-ov .page-chip,html.boot-ov .only-page{display:none}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -2069,13 +2076,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-f95593c5f981.js';
+    s.src = 'app-0b33e44b8a72.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-f95593c5f981.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-0b33e44b8a72.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-faf2dbb32a95.json').then(function (r) {
