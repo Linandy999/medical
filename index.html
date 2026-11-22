@@ -1584,6 +1584,32 @@ a.pass:hover .pass-go{text-decoration:underline;text-underline-offset:3px}
 #pageGrid .page-card .pc-name{flex:0 1 auto;text-align:center}
 #pageGrid .page-card.add{min-height:0;padding:14px}
 
+/* ── 下載 PDF：畫面外的 A4 版面（app.js 拍照用），一律用淺色 ── */
+.pdf-sheet{position:absolute;left:-20000px;top:0;overflow:hidden;background:#fff;color:#111;
+  --bg:#fff; --panel:#fff; --panel-2:#efe9df; --border:#e0d9cc; --text:#2c2a26; --muted:#6e685e; --faint:#8a8276;
+  --accent:#1e6f66; --accent-soft:#dfefeb; --warn:#9a6a10; --warn-soft:#fbf0da; --danger:#b4402f; --danger-soft:#f9e8e3;
+  --ok:#3f7a3a; --ok-soft:#e8f2e3; --meta:#0f766e; --link:#1d5fd1;
+  --c-definition:#8a8276; --c-epidemiology:#7d6aa8; --c-etiology:#a8743a; --c-risk_factors:#b0882a;
+  --c-clinical:#3f6fb0; --c-diagnosis:#1e6f66; --c-differential:#2f8a9a; --c-treatment:#3f7a3a;
+  --c-prognosis:#6b7c8f; --c-complications:#b4402f; --c-prevention:#5a8a3c; --c-reference:#8a8276}
+.pdf-sheet .pdf-title{font-size:26px;margin:0 0 12px;line-height:1.3}
+.pdf-sheet section.cat{margin-bottom:16px}
+.pdf-sheet section.cat.folded > *{display:revert!important}
+.pdf-sheet .card,.pdf-sheet .src-group{box-shadow:none!important;background:#fff!important}
+.pdf-sheet .card{padding:10px 12px}
+.pdf-sheet .md{font-size:14px!important;line-height:1.75}
+.pdf-sheet .md table{display:table!important;font-size:12.5px!important;overflow:visible;width:100%}
+.pdf-sheet .md th:first-child,.pdf-sheet .md td:first-child{position:static!important}
+.pdf-sheet img{max-width:100%;height:auto}
+.pdf-sheet{padding:0 4px}
+/* html2canvas 畫的清單圓點會偏高，改用自己畫的 */
+.pdf-sheet ul{list-style:none}
+.pdf-sheet ul > li{position:relative}
+.pdf-sheet ul > li::before{content:"•";position:absolute;left:-1em;top:0}
+.pdf-sheet ol{list-style:none;counter-reset:pdfol}
+.pdf-sheet ol > li{position:relative;counter-increment:pdfol}
+.pdf-sheet ol > li::before{content:counter(pdfol) ".";position:absolute;left:-1.6em;top:0}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -1679,7 +1705,7 @@ body.guest #noteNew{display:none}
       <div class="kb-head">
         <h1 id="kbTitle">尚未選擇疾病主題</h1>
         <button id="topicEdit" class="title-edit" hidden title="修改主題名稱">✎ 改名</button>
-        <button id="kbPrint" class="kb-print" hidden title="把這個主題排成講義，可以列印或存成 PDF">列印／PDF</button>
+        <button id="kbPrint" class="kb-print" hidden title="把這個主題排成講義，存成 PDF">PDF</button>
         <label id="topicReadBox" class="read-toggle" hidden title="記錄你讀過這個主題"><input type="checkbox" id="topicRead"><span>已讀</span></label>
       </div>
       <div class="sub" id="kbSub"></div>
@@ -2155,7 +2181,7 @@ body.guest #noteNew{display:none}
 <script>
 (function () {
   var pre = document.createElement('link');
-  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-d974aaa3c9d1.js';
+  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-77c33b41687b.js';
   document.head.appendChild(pre);
   var box = document.createElement('div');
   box.id = 'bootBox';
@@ -2178,13 +2204,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-d974aaa3c9d1.js';
+    s.src = 'app-77c33b41687b.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-d974aaa3c9d1.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-77c33b41687b.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-0840048e7bb2.json').then(function (r) {

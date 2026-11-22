@@ -5674,17 +5674,125 @@ function rvShowDrug(name, keepScroll) {
 })();
 
 
-/* ================= 列印講義 ================= */
+/* ================= 下載 PDF 講義 ================= */
 (function () {
-  // 列印：暫時展開收合的分類，標題改成主題名（存 PDF 時當檔名），印完復原
+  // 不經過列印對話框：把主題內容複製到畫面外的 A4 版面，逐頁用 html2canvas 拍成圖，再用 jsPDF 組成 PDF 下載。
+  // 換頁點挑在段落、清單項目、表格列的交界，避免把一行字切成兩半。兩個函式庫按下才載入。
+  const LIBS = ['https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
+  const load = src => new Promise((ok, bad) => {
+    if (document.querySelector(`script[src="${src}"]`)) return ok();
+    const el = document.createElement('script'); el.src = src; el.onload = ok;
+    el.onerror = () => bad(new Error('載入失敗：' + src)); document.head.appendChild(el);
+  });
+  const W = 760, MARGIN = 12, PAGE_W = 210 - MARGIN * 2, PAGE_H = 297 - MARGIN * 2 - 6;   // mm，底部留 6mm 放頁碼
+  const H = Math.floor(W * PAGE_H / PAGE_W);                                               // 每頁可放的 CSS px 高度
+  // html2canvas 畫跨行的 inline 底色時會塗滿整個外框、蓋住前面的字：把畫記的文字按行切開，每行各包一段底色
+  function splitMarks(root) {
+    root.querySelectorAll('mark').forEach(mk => {
+      if (mk.getClientRects().length < 2) return;
+      const bg = getComputedStyle(mk).backgroundColor;
+      const walker = document.createTreeWalker(mk, NodeFilter.SHOW_TEXT);
+      const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(tn => {
+        const txt = tn.textContent, rg = document.createRange(), parts = [];
+        let start = 0, top = null;
+        for (let i = 0; i < txt.length; i++) {
+          rg.setStart(tn, i); rg.setEnd(tn, i + 1);
+          const r = rg.getClientRects()[0];
+          if (!r) continue;
+          if (top !== null && Math.abs(r.top - top) > 4) { parts.push(txt.slice(start, i)); start = i; }
+          top = r.top;
+        }
+        parts.push(txt.slice(start));
+        const frag = document.createDocumentFragment();
+        parts.forEach(t => { const sp = document.createElement('span'); sp.className = 'pdf-hlseg'; sp.style.background = bg; sp.textContent = t; frag.appendChild(sp); });
+        tn.replaceWith(frag);
+      });
+      mk.style.background = 'transparent';
+    });
+  }
   const pb = $('#kbPrint');
-  if (pb) pb.onclick = () => {
-    const folded = $$('#kbBody section.cat.folded');
-    folded.forEach(s => s.classList.remove('folded'));
-    const t0 = document.title;
-    document.title = ($('#kbTitle').textContent || '講義').trim();
-    const done = () => { folded.forEach(s => s.classList.add('folded')); document.title = t0; removeEventListener('afterprint', done); };
-    addEventListener('afterprint', done);
-    setTimeout(() => window.print(), 50);
+  if (!pb) return;
+  let busy = false;
+  pb.onclick = async () => {
+    if (busy) return;
+    busy = true;
+    const label = pb.textContent;
+    const title = ($('#kbTitle').textContent || '講義').trim();
+    let sheet = null;
+    try {
+      pb.textContent = 'PDF 準備中…';
+      for (const src of LIBS) await load(src);
+      sheet = document.createElement('div');
+      sheet.className = 'pdf-sheet';
+      sheet.style.width = W + 'px';
+      const inner = document.createElement('div');
+      inner.className = 'pdf-inner';
+      inner.innerHTML = `<h1 class="pdf-title">${esc(title)}</h1>`;
+      const body = $('#kbBody').cloneNode(true);
+      body.removeAttribute('id');
+      body.querySelectorAll('section.cat.folded').forEach(x => x.classList.remove('folded'));
+      body.querySelectorAll('button,.act,.exam-block,.fold-caret,.note-peek,input,select,textarea').forEach(x => x.remove());
+      body.querySelectorAll('img').forEach(im => im.loading = 'eager');
+      body.querySelectorAll('mark.hl').forEach(mk => mk.replaceWith(...mk.childNodes));   // PDF 不帶畫記
+      inner.appendChild(body);
+      sheet.appendChild(inner);
+      document.body.appendChild(sheet);
+      await Promise.all([...sheet.querySelectorAll('img')].map(im => im.complete ? 0 :
+        new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 8000); })));
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      splitMarks(sheet);
+
+      // 可換頁的位置：各區塊的上緣與下緣（分類標題正下方不換頁）
+      const top0 = inner.getBoundingClientRect().top;
+      const total = Math.ceil(inner.scrollHeight);
+      // 標題與它底下第一行之間不換頁（避免頁底只剩一個標題）
+      const avoid = [...inner.querySelectorAll('.cat-head,.card .src,h1,h2,h3,h4')].map(el => {
+        const r = el.getBoundingClientRect();
+        return [r.top - top0 + 1, r.bottom - top0 + 40];
+      });
+      const blocked = y => avoid.some(([a, b]) => y > a && y < b);
+      const cand = new Set([total]);
+      inner.querySelectorAll('p,li,tr,h1,h2,h3,h4,figure,blockquote,pre,hr,table,.cat-head,.card,.src-group,section,.md > *')
+        .forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (!r.height) return;
+          cand.add(Math.round(r.top - top0));
+          cand.add(Math.round(r.bottom - top0));
+        });
+      const breaks = [...cand].filter(y => y > 0 && (y >= total || !blocked(y))).sort((a, b) => a - b);
+      const pages = [];
+      for (let y = 0; y < total;) {
+        let end = y + H;
+        if (end < total) {
+          const ok = breaks.filter(b => b > y + H * 0.4 && b <= y + H);
+          if (ok.length) end = ok[ok.length - 1];
+        } else end = total;
+        pages.push([y, end]);
+        y = end;
+      }
+
+      const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+      for (let k = 0; k < pages.length; k++) {
+        const [y0, y1] = pages[k];
+        pb.textContent = `PDF 產生中 ${k + 1}/${pages.length}`;
+        sheet.style.height = (y1 - y0) + 'px';
+        inner.style.marginTop = (-y0) + 'px';
+        const cv = await html2canvas(sheet, { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false,
+          windowWidth: W + 40 });
+        if (k) pdf.addPage();
+        pdf.addImage(cv.toDataURL('image/jpeg', 0.82), 'JPEG', MARGIN, MARGIN, PAGE_W, PAGE_W * (y1 - y0) / W);
+        pdf.setFontSize(8); pdf.setTextColor(140);
+        pdf.text(`${k + 1} / ${pages.length}`, 105, 297 - MARGIN + 2, { align: 'center' });
+      }
+      pdf.save(title.replace(/[\\/:*?"<>|]/g, '_') + '.pdf');
+    } catch (e) {
+      alert('PDF 產生失敗：' + (e && e.message || e));
+    } finally {
+      if (sheet) sheet.remove();
+      pb.textContent = label;
+      busy = false;
+    }
   };
 })();
