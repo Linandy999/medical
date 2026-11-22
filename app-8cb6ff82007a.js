@@ -2377,7 +2377,15 @@ async function jumpToEntry(entryId, topicId, opts) {
     const here = state.topicId === topicId && $(`.card[data-entry="${entryId}"]`);
     if (!here) await selectTopic(topicId);
     setTimeout(() => {
-      const card = $(`.card[data-entry="${entryId}"]`);
+      let card = $(`.card[data-entry="${entryId}"]`);
+      // 這台裝置之前在這個主題選過某個副主題時，別的副主題的條目不會畫出來：切回「全部」再找
+      if (!card && currentSub()) {
+        try { localStorage.setItem(subKey(), ''); } catch (e) { /* 無痕模式 */ }
+        state.sections = filterBySub(state.rawSections || [], '');
+        renderKnowledge(state.sections);
+        renderCatNav(state.overview);
+        card = $(`.card[data-entry="${entryId}"]`);
+      }
       if (!card) { toast('這一則目前不在畫面上', true); return; }
       const sec = card.closest('.cat');
       if (sec && sec.classList.contains('folded')) sec.classList.remove('folded');   // 只在畫面上展開，不改記憶的收合設定
