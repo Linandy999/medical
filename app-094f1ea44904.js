@@ -1046,6 +1046,7 @@ function renderCatNav(overview) {
     if (!$('#view-kb').classList.contains('active')) showView('kb');
     state.activeCat = a.dataset.slug;
     renderCatNav(state.overview.length ? state.overview : null);
+    const narrow = collapseAsideOnPhone();
     const t = document.getElementById('cat-' + a.dataset.slug);
     if (t) {
       if (t.classList.contains('folded')) {        // 收合中就先展開，否則點了像沒反應
@@ -1053,11 +1054,14 @@ function renderCatNav(overview) {
         const set = foldSet(); set.delete(a.dataset.slug);
         try { localStorage.setItem('kbFolded', JSON.stringify([...set])); } catch (e) { }
       }
-      t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // 手機剛收起側欄，版面要先重排才捲得到正確位置
+      const go = () => t.scrollIntoView({ behavior: narrow ? 'auto' : 'smooth', block: 'start' });
+      narrow ? requestAnimationFrame(() => requestAnimationFrame(go)) : go();
     }
   });
   $$('#catNav a[data-view]').forEach(a => a.onclick = ev => {
     ev.preventDefault();
+    collapseAsideOnPhone();
     showView(a.dataset.view);
   });
 }
@@ -3891,6 +3895,13 @@ async function doLogout() {
 function setAside(open) {
   document.body.classList.toggle('aside-collapsed', !open);
   localStorage.setItem('asideOpen', open ? '1' : '0');
+}
+// 手機（窄螢幕）側欄會蓋住內文：選完分類就收起來，左下「› 側欄」可再叫出。
+// 只改畫面、不寫進 localStorage，電腦版記住的展開狀態不受影響。
+function collapseAsideOnPhone() {
+  if (!window.matchMedia('(max-width: 900px)').matches) return false;
+  document.body.classList.add('aside-collapsed');
+  return true;
 }
 $('#asideCollapse').onclick = () => setAside(false);
 $('#asideOpen').onclick = () => setAside(true);

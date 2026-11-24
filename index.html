@@ -2208,7 +2208,7 @@ body.guest #noteNew{display:none}
 <script>
 (function () {
   var pre = document.createElement('link');
-  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-8cb6ff82007a.js';
+  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-094f1ea44904.js';
   document.head.appendChild(pre);
   var box = document.createElement('div');
   box.id = 'bootBox';
@@ -2231,13 +2231,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-8cb6ff82007a.js';
+    s.src = 'app-094f1ea44904.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-8cb6ff82007a.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-094f1ea44904.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-c2630ad60f0d.json').then(function (r) {
