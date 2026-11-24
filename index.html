@@ -1622,6 +1622,33 @@ a.pass:hover .pass-go{text-decoration:underline;text-underline-offset:3px}
 .pass-name{flex-wrap:nowrap;white-space:nowrap;min-width:0}
 .pass-name small{overflow:hidden;text-overflow:ellipsis;min-width:0}
 
+/* ---------- 2026-11-24：手機版面（只在窄螢幕生效，電腦版不動） ---------- */
+@media (max-width:900px){
+  /* 內文區加寬：外框與卡片留白縮小 */
+  main{padding-left:10px;padding-right:10px}
+  body.aside-collapsed main{padding-left:10px}
+  .card,html.skin-new .card{padding:12px 12px 10px}
+  .card .src,html.skin-new .card .src{font-size:12px;font-weight:500;line-height:1.5;gap:6px}
+  .kb-head h1,html.skin-new .kb-head h1{font-size:21px}
+  /* 表格：字小一點、格子緊一點，寬表仍可左右滑 */
+  .md table,html[data-fs=l] .md table{font-size:13.5px;margin:10px 0;-webkit-overflow-scrolling:touch}
+  .md th,.md td{padding:7px 9px}
+  .md img{max-width:100%;height:auto}
+  /* 下拉選單被長選項撐破版面（圖表頁的主題選單會把整頁撐到 555px 寬） */
+  select{max-width:100%}
+  .toolbar select{min-width:0}
+  /* 考古題篩選列：搜尋框整行，三個下拉平均分一行 */
+  #view-exams .toolbar #exQ{flex:1 1 100% !important;min-width:0 !important}  /* 頁面寫了 inline style */
+  #view-exams .toolbar .spacer{display:none}
+  #view-exams .toolbar #exYear,#view-exams .toolbar #exSubject,#view-exams .toolbar #exCat{flex:1 1 0;width:auto;font-size:13.5px;padding-left:8px;padding-right:20px}
+  /* 「側欄」把手改成左下角的小圓鈕，少擋內文 */
+  .aside-open,html.skin-new .aside-open{left:10px;bottom:84px;width:44px;height:44px;padding:0;border-radius:50%;
+    border:1px solid var(--border);font-size:0;line-height:44px;text-align:center;opacity:.92;
+    box-shadow:0 4px 14px rgba(0,0,0,.16)}
+  .aside-open::before{content:"☰";font-size:19px;color:var(--accent)}
+  html:not(.skin-new) .aside-open{bottom:16px}
+}
+
 #aiBtn,#aiPanel,#pmTabBtn,#view-pubmed,#hlToolbar [data-askai],[data-askai-entry]{display:none!important}
 
 /* ── 公開版專用 ───────────────────────── */
@@ -2208,7 +2235,7 @@ body.guest #noteNew{display:none}
 <script>
 (function () {
   var pre = document.createElement('link');
-  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-094f1ea44904.js';
+  pre.rel = 'preload'; pre.as = 'script'; pre.href = 'app-0fb06e799183.js';
   document.head.appendChild(pre);
   var box = document.createElement('div');
   box.id = 'bootBox';
@@ -2231,13 +2258,13 @@ body.guest #noteNew{display:none}
     window.__MEDKB__ = bundle.data;
     window.__SRC__ = bundle.src;
     var s = document.createElement('script');
-    s.src = 'app-094f1ea44904.js';
+    s.src = 'app-0fb06e799183.js';
     s.onload = function () {
       box.remove();
       // 註冊放最後：重複造訪就不必再等 2.6 MB，順便能離線看
       if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(function () {});
     };
-    s.onerror = function () { fail('程式載入失敗', 'app-094f1ea44904.js 取不到'); };
+    s.onerror = function () { fail('程式載入失敗', 'app-0fb06e799183.js 取不到'); };
     document.body.appendChild(s);
   }
   fetch('data-c2630ad60f0d.json').then(function (r) {

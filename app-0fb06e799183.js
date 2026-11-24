@@ -764,6 +764,8 @@ function md(src) {
    問答區（12）與筆記區（13）由左側分類架構清單觸發 */
 function showView(v) {
   document.documentElement.classList.remove('boot-ov');
+  // 手機：側欄會蓋住整頁，知識庫以外的頁面一進來就先收起（要換主題按左下 ☰）
+  if (v !== 'kb') collapseAsideOnPhone();
   $$('.view').forEach(el => el.classList.toggle('active', el.id === 'view-' + v));
   $$('nav.tabs button').forEach(x => x.classList.toggle('active', x.dataset.view === v));
   $('#gearBtn').classList.toggle('active', v === 'settings');
@@ -933,6 +935,7 @@ function renderTopics() {
     }
     // 在考古題頁切換主題時留在原頁，只更新題目；其他頁面才跳回知識庫
     if (!onExams && !$('#view-kb').classList.contains('active')) showView('kb');
+    if (onExams) collapseAsideOnPhone();       // 手機：考古題頁選完主題直接看題目
     selectTopic(+el.dataset.id);
   });
   if (state.overview.length) renderCatNav(state.overview);
