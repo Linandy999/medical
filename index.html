@@ -1632,6 +1632,8 @@ body.guest .cat-nav a[data-view="notes"]{display:block}
 /* 訪客按了只會拿到 401 的入口一律收掉 */
 body.guest #pageAdd,
 body.guest #noteNew{display:none}
+/* 發布版沒有伺服器，登入永遠失敗（只會顯示密碼錯誤），按鈕直接拿掉 */
+#loginBtn,#loginModal{display:none!important}
 </style>
 </head>
 <body>
