@@ -2,8 +2,16 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>醫學文獻知識庫</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="pwa/favicon-32.png">
+<link rel="apple-touch-icon" href="pwa/apple-touch-icon.png">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="醫學知識庫">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>(function(){var d=document.documentElement,s='new',c='blue';
 try{s=localStorage.getItem('medkb.skin')||'new';c=localStorage.getItem('medkb.accent')||'blue';}catch(e){}
 if(!/^#\/p\/\d+/.test(location.hash))d.classList.add('boot-ov');if(s==='new')d.classList.add('skin-new');d.setAttribute('data-accent',c);try{d.setAttribute('data-fs',localStorage.getItem('medkb.fs')||'m');}catch(e){}})();</script>
