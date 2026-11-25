@@ -342,7 +342,7 @@ function kbHref(r, mark) {
   return KB + '#/p/' + (t ? t[1] : 0) + '/t/' + r.topic_id + '/e/' + r.entry_id + '/m/' + encodeURIComponent(mark);
 }
 
-fetch('data-9ef63e2991e8.json').then(r => r.json()).then(data => {
+fetch('data-4fb4efd340fd.json').then(r => r.json()).then(data => {
   D = data;
   D.classes = D.classes.concat([{ key: '_none', name: '其他（未分類）', group: '其他', terms: [] }]);
   if (!D.groups.includes('其他')) D.groups.push('其他');
@@ -469,7 +469,7 @@ function doseTables(members) {
 // 點出處：就地展開整則條目（依主題載入 e/t<主題>.json），再點一次收起
 const entryCache = new Map();
 function loadEntries(tid) {
-  if (!entryCache.has(tid)) entryCache.set(tid, fetch('e/t' + tid + '.json?v=9e81a374b7fd').then(r => {
+  if (!entryCache.has(tid)) entryCache.set(tid, fetch('e/t' + tid + '.json?v=77cdb9f4f892').then(r => {
     if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).catch(e => { entryCache.delete(tid); throw e; }));
   return entryCache.get(tid);
 }
